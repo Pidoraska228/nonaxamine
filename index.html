@@ -370,51 +370,57 @@
             if (e.key === 'Enter') performSearch();
         });
 
-        // Безопасный поиск через внутренний прокси Cloudflare Workers
+        // Функция поиска через AllOrigins JSON-контейнер (не блокируется Cloudflare)
         async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
 
-            // Сразу выводим лоадер
+            // Выводим лоадер
             resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Поиск аниме в базе...</p>';
             resultsDropdown.style.display = 'block';
 
-            // Наш целевой адрес API v3
+            // Живой и рабочий API v3 сервер приложения
             const searchUrl = `https://api.anilibria.app/v3/title/search?search=${encodeURIComponent(query)}`;
             
-            // Список прокси, где на первом месте стоит неуязвимый cors.bwa.workers.dev
-            const rawProxies = [
-                `https://cors.bwa.workers.dev/${searchUrl}`,
-                `https://api.cors.lol/?url=${encodeURIComponent(searchUrl)}`,
-                `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`
-            ];
+            // Запрос идет через метод /get (JSON container) — AllOrigins запрашивает его со своего бэкенда, обходя Turnstile и капчи
+            const primaryProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`;
 
-            let success = false;
-
-            // Перебираем прокси по очереди
-            for (let i = 0; i < rawProxies.length; i++) {
-                const proxyUrl = rawProxies[i];
-                console.log(`Запрос через прокси-сервер ${i + 1}...`);
+            try {
+                console.log("Отправляем защищенный контейнерный запрос...");
+                const response = await fetch(primaryProxyUrl);
+                if (!response.ok) throw new Error("Контейнер AllOrigins отклонил запрос.");
                 
-                try {
-                    const response = await fetch(proxyUrl);
-                    if (!response.ok) throw new Error("Прокси отклонил запрос.");
-                    
-                    const data = await response.json();
-                    const list = Array.isArray(data) ? data : (data.list || []);
-                    
-                    if (list && list.length >= 0) {
-                        displaySearchResults(list);
-                        success = true;
-                        break; // Выходим из цикла, если поиск сработал!
-                    }
-                } catch (err) {
-                    console.warn(`Прокси ${i + 1} завершился с ошибкой:`, err);
+                const wrapper = await response.json();
+                
+                // Безопасно распаковываем текстовый ответ в полноценный JSON
+                const data = JSON.parse(wrapper.contents);
+                const list = Array.isArray(data) ? data : (data.list || []);
+                
+                if (list && list.length >= 0) {
+                    displaySearchResults(list);
+                    return; // Успешно вышли из функции
                 }
+            } catch (err) {
+                console.warn("Основной контейнер дал сбой, пробуем резервные прокси...", err);
             }
 
-            if (!success) {
-                resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-accent-red); text-align: center;">Не удалось связаться с серверами Анилибрии. Попробуйте ввести запрос заново.</p>';
+            // Наш резервный прокси на случай перегрузки основного
+            const backupProxyUrl = `https://api.cors.lol/?url=${encodeURIComponent(searchUrl)}`;
+
+            try {
+                console.log("Запрос через резервный прокси...");
+                const response = await fetch(backupProxyUrl);
+                if (!response.ok) throw new Error();
+                
+                const data = await response.json();
+                const list = Array.isArray(data) ? data : (data.list || []);
+                
+                if (list) {
+                    displaySearchResults(list);
+                }
+            } catch (fallbackErr) {
+                console.error("Оба способа заблокированы:", fallbackErr);
+                resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-accent-red); text-align: center;">Не удалось связаться с серверами Анилибрии. Попробуйте ввести запрос еще раз.</p>';
             }
         }
 

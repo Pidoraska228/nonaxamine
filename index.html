@@ -319,10 +319,10 @@
 
         <!-- Видеоплеер -->
         <div class="nx-player-box">
-            <video id="nonax-player" class="nx-video-source" controls></video>
+            <video id="nonax-player" class="nx-video" controls></video>
             
             <!-- Уникальная кнопка прыжка по таймлайну -->
-            <button id="nonax-skip-btn" class="nx-skip-trigger">ПРОПУСТИТЬ ОПЕНИНГ</button>
+            <button id="nonax-skip-btn" class="nx-skip-btn">ПРОПУСТИТЬ ОПЕНИНГ</button>
         </div>
 
         <!-- Блок выбора серий -->
@@ -370,44 +370,94 @@
             if (e.key === 'Enter') performSearch();
         });
 
-        // Двухэтапная функция поиска
+        // Функция поиска с многоуровневыми прокси
         function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
 
-            // Живой домен API Анилибрии
-            const searchUrl = `https://api.anilibria.app/v3/title/search?search=${encodeURIComponent(query)}`;
-            // Запасной URL через открытый CORS-прокси на случай блокировки localhost-запроса
-            const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(searchUrl)}`;
+            // API AniLibria v3
+            const searchUrl = `https://api.anilibria.tv/v3/title/search?search=${encodeURIComponent(query)}`;
+            
+            // Список прокси, которые мы будем пробовать по очереди, если предыдущие упадут
+            const proxies = [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(searchUrl)}`,
+                `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,
+                `https://cors-anywhere.herokuapp.com/${searchUrl}` // Требует активации, но как резерв
+            ];
 
-            console.log("Пробуем прямой запрос к серверу...");
-            fetch(searchUrl)
-                .then(res => {
-                    if (!res.ok) throw new Error("CORS или сервер отклонил прямой запрос.");
-                    return res.json();
-                })
-                .then(data => {
-                    const list = Array.isArray(data) ? data : (data.list || []);
-                    displaySearchResults(list);
-                })
-                .catch(err => {
-                    console.warn("Прямой запрос заблокирован. Подключаем CORS-прокси...", err);
+            let attempt = 0;
+
+            function tryFetch(url) {
+                console.log(`Запрос к: ${url}`);
+                fetch(url)
+                    .then(res => {
+                        if (!res.ok) throw new Error("Запрос отклонен сервером.");
+                        return res.json();
+                    })
+                    .then(data => {
+                        // AllOrigins возвращает raw данные, но на некоторых прокси структура может обернуться
+                        const list = Array.isArray(data) ? data : (data.list || []);
+                        displaySearchResults(list);
+                    })
+                    .catch(err => {
+                        console.warn(`Запрос через ${url} завершился ошибкой.`, err);
+                        if (attempt < proxies.length) {
+                            attempt++;
+                            playNextProxy();
+                        } else {
+                            alert("Не удалось загрузить данные. Прокси-серверы временно недоступны. Попробуйте поискать еще раз через пару минут.");
+                        }
+                    });
+            }
+
+            function playNextProxy() {
+                if (attempt < proxiesList.length) {
+                    const currentProxyUrl = proxiesList[attempt](searchUrl);
+                    console.log(`Пробуем прокси: ${currentProxyUrl}`);
                     
-                    // Пробуем обойти CORS через AllOrigins
-                    fetch(fallbackUrl)
+                    fetch(currentProxyUrl)
                         .then(res => {
-                            if (!res.ok) throw new Error("Ошибка прокси-сервера.");
+                            if (!res.ok) throw new Error();
                             return res.json();
                         })
                         .then(data => {
-                            const list = Array.isArray(data) ? data : (data.list || []);
+                            // Прокси AllOrigins иногда оборачивает данные в JSON-объект, если использовать не raw-метод, но мы обрабатываем это
+                            let list = [];
+                            if (Array.isArray(data)) {
+                                list = data;
+                            } else if (data.list) {
+                                list = data.list;
+                            } else if (data.contents) {
+                                // Обработка стандартной обертки AllOrigins
+                                try {
+                                    const parsed = JSON.parse(data.contents);
+                                    list = Array.isArray(parsed) ? parsed : (parsed.list || []);
+                                } catch(e) {
+                                    list = [];
+                                }
+                            }
                             displaySearchResults(list);
                         })
-                        .catch(finalErr => {
-                            console.error("Обе попытки завершились ошибкой:", finalErr);
-                            alert("Не удалось загрузить результаты поиска. Возникла системная ошибка CORS. Убедитесь, что интернет активен.");
+                        .catch(err => {
+                            console.warn(`Прокси ${attempt} дал сбой.`);
+                            attempt++;
+                            playNextProxy();
                         });
-                });
+                } else {
+                    alert("Все прокси-серверы перегружены. Пожалуйста, попробуйте совершить поиск повторно через 10 секунд.");
+                }
+            }
+
+            // Массив функций-генераторов прокси для гибкости
+            const proxiesList = [
+                (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, // API AllOrigins (самый надежный)
+                (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,         // Corsproxy.io
+                (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` // Codetabs proxy
+            ];
+
+            // Запускаем последовательный перебор
+            console.log("Запуск последовательного опроса прокси...");
+            playNextProxy();
         }
 
         // Вывод результатов поиска

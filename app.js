@@ -24,7 +24,7 @@ searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') performSearch();
 });
 
-// Функция поиска через AllOrigins JSON-контейнер (не блокируется Cloudflare)
+// Усовершенствованный поиск с обходом блокировок и встроенной диагностикой ошибок
 async function performSearch() {
     const query = searchInput.value.trim();
     if (!query) return;
@@ -33,18 +33,28 @@ async function performSearch() {
     resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Поиск аниме в базе...</p>';
     resultsDropdown.style.display = 'block';
 
-    // Живой и рабочий API v3 сервер приложения
+    // Живой API v3 сервер приложения
     const searchUrl = `https://api.anilibria.app/v3/title/search?search=${encodeURIComponent(query)}`;
     
-    // Запрос идет через метод /get (JSON container) — AllOrigins запрашивает его со своего бэкенда, обходя Turnstile и капчи
-    const primaryProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`;
+    // Список сырых прокси, включая стабильный cors.notesnook.com
+    const rawProxies = [
+        `https://cors.notesnook.com/${searchUrl}`,
+        `https://api.cors.lol/?url=${encodeURIComponent(searchUrl)}`,
+        `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`
+    ];
 
+    let success = false;
+    let errorDetails = []; // Сюда будем собирать отчет о сбоях
+
+    // Попытка 1: Через AllOrigins JSON-контейнер (самый стабильный для обхода Cloudflare)
+    const containerProxy = `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`;
+    console.log("Запрос через контейнер AllOrigins...");
     try {
-        console.log("Отправляем защищенный контейнерный запрос...");
-        const response = await fetch(primaryProxyUrl);
-        if (!response.ok) throw new Error("Контейнер AllOrigins отклонил запрос.");
+        const response = await fetch(containerProxy);
+        if (!response.ok) throw new Error(`Статус ответа: ${response.status}`);
         
         const wrapper = await response.json();
+        if (!wrapper.contents) throw new Error("Сервер вернул пустой контейнер.");
         
         // Безопасно распаковываем текстовый ответ в полноценный JSON
         const data = JSON.parse(wrapper.contents);
@@ -55,26 +65,47 @@ async function performSearch() {
             return; // Успешно вышли из функции
         }
     } catch (err) {
-        console.warn("Основной контейнер дал сбой, пробуем резервные прокси...", err);
+        console.warn("Контейнер AllOrigins выдал ошибку:", err);
+        errorDetails.push(`AllOrigins-Container: ${err.message}`);
     }
 
-    // Наш резервный прокси на случай перегрузки основного
-    const backupProxyUrl = `https://api.cors.lol/?url=${encodeURIComponent(searchUrl)}`;
-
-    try {
-        console.log("Запрос через резервный прокси...");
-        const response = await fetch(backupProxyUrl);
-        if (!response.ok) throw new Error();
+    // Попытка 2: Перебираем RAW-прокси по очереди
+    for (let i = 0; i < rawProxies.length; i++) {
+        const proxyUrl = rawProxies[i];
+        const proxyHost = new URL(proxyUrl).hostname;
+        console.log(`Запрос через сырой прокси-сервер ${i + 1} (${proxyHost})...`);
         
-        const data = await response.json();
-        const list = Array.isArray(data) ? data : (data.list || []);
-        
-        if (list) {
-            displaySearchResults(list);
+        try {
+            const response = await fetch(proxyUrl);
+            if (!response.ok) throw new Error(`Статус ответа: ${response.status}`);
+            
+            const data = await response.json();
+            const list = Array.isArray(data) ? data : (data.list || []);
+            
+            if (list) {
+                displaySearchResults(list);
+                success = true;
+                break; // Выходим из цикла, если поиск сработал!
+            }
+        } catch (err) {
+            console.warn(`Прокси ${i + 1} завершился с ошибкой:`, err);
+            errorDetails.push(`Прокси ${i + 1} (${proxyHost}): ${err.message}`);
         }
-    } catch (fallbackErr) {
-        console.error("Оба способа заблокированы:", fallbackErr);
-        resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-accent-red); text-align: center;">Не удалось связаться с серверами Анилибрии. Попробуйте ввести запрос еще раз.</p>';
+    }
+
+    if (!success) {
+        // Выводим интерактивный детальный отчет об ошибках прямо на экран для диагностики!
+        resultsGrid.innerHTML = `
+            <div style="grid-column: span 4; text-align: center; padding: 25px; background: rgba(255, 51, 51, 0.03); border: 1px dashed var(--nx-accent-red); border-radius: 12px; box-sizing: border-box;">
+                <p style="color: var(--nx-accent-red); font-weight: bold; margin: 0 0 10px 0; font-size: 16px;">Не удалось связаться с серверами Анилибрии.</p>
+                <p style="color: var(--nx-text-secondary); font-size: 13px; margin: 0 0 20px 0;">Все методы подключения заблокированы Cloudflare.</p>
+                
+                <details style="text-align: left; display: inline-block; width: 100%; max-width: 600px; background: #000; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; color: #ff8888; border: 1px solid var(--nx-border-color); box-sizing: border-box;">
+                    <summary style="cursor: pointer; color: var(--nx-text-primary); font-weight: bold; outline: none; user-select: none;">Показать технические детали ошибок</summary>
+                    <pre style="margin: 12px 0 0 0; white-space: pre-wrap; word-break: break-all; line-height: 1.5;">${errorDetails.join('\n')}</pre>
+                </details>
+            </div>
+        `;
     }
 }
 

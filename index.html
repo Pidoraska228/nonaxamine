@@ -370,7 +370,7 @@
             if (e.key === 'Enter') performSearch();
         });
 
-        // Безопасный поиск с каруселью сырых RAW-прокси
+        // Безопасный поиск через чистые RAW-прокси с приоритетом CORS.lol
         async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
@@ -382,11 +382,11 @@
             // Базовый рабочий URL API
             const searchUrl = `https://api.anilibria.tv/v3/title/search?search=${encodeURIComponent(query)}`;
             
-            // Список сырых (raw) прокси, возвращающих чистый JSON напрямую без корявого конвертирования кириллицы
+            // CORS.lol на первом месте — его IP-адреса чисты перед Cloudflare
             const rawProxies = [
+                `https://api.cors.lol/?url=${encodeURIComponent(searchUrl)}`,
                 `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(searchUrl)}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(searchUrl)}`
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(searchUrl)}`
             ];
 
             let success = false;
@@ -394,27 +394,27 @@
             // Перебираем прокси по очереди
             for (let i = 0; i < rawProxies.length; i++) {
                 const proxyUrl = rawProxies[i];
-                console.log(`Пробуем сырой прокси-сервер ${i + 1}...`);
+                console.log(`Запрос через прокси-сервер ${i + 1}...`);
                 
                 try {
                     const response = await fetch(proxyUrl);
-                    if (!response.ok) throw new Error("Сервер прокси вернул ошибку.");
+                    if (!response.ok) throw new Error("Прокси отклонил запрос.");
                     
                     const data = await response.json();
                     const list = Array.isArray(data) ? data : (data.list || []);
                     
-                    if (list) {
+                    if (list && list.length >= 0) {
                         displaySearchResults(list);
                         success = true;
                         break; // Выходим из цикла, если поиск сработал!
                     }
                 } catch (err) {
-                    console.warn(`Прокси ${i + 1} дал сбой при обработке:`, err);
+                    console.warn(`Прокси ${i + 1} завершился с ошибкой:`, err);
                 }
             }
 
             if (!success) {
-                resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-accent-red); text-align: center;">Не удалось связаться с серверами. Попробуйте ввести другой поисковый запрос.</p>';
+                resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-accent-red); text-align: center;">Не удалось связаться с серверами Анилибрии. Попробуйте ввести запрос заново.</p>';
             }
         }
 

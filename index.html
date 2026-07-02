@@ -370,7 +370,7 @@
             if (e.key === 'Enter') performSearch();
         });
 
-        // Безопасный поиск через чистые RAW-прокси с приоритетом CORS.lol
+        // Безопасный поиск через чистые RAW-прокси с использованием ЖИВОГО домена api.anilibria.app
         async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
@@ -379,10 +379,10 @@
             resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Поиск аниме в базе...</p>';
             resultsDropdown.style.display = 'block';
 
-            // Базовый рабочий URL API
-            const searchUrl = `https://api.anilibria.tv/v3/title/search?search=${encodeURIComponent(query)}`;
+            // ИСПОЛЬЗУЕМ ЖИВОЙ СЕРВЕР ПРИЛОЖЕНИЯ API v3 (api.anilibria.app)
+            const searchUrl = `https://api.anilibria.app/v3/title/search?search=${encodeURIComponent(query)}`;
             
-            // CORS.lol на первом месте — его IP-адреса чисты перед Cloudflare
+            // Список сырых прокси
             const rawProxies = [
                 `https://api.cors.lol/?url=${encodeURIComponent(searchUrl)}`,
                 `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,

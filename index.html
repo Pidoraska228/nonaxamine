@@ -7,9 +7,6 @@
     
     <!-- Подключаем библиотеку Hls.js для воспроизведения потокового видео .m3u8 -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
-    
-    <!-- Подключаем Puter.js для 100% обхода CORS и блокировок Cloudflare -->
-    <script src="https://js.puter.com/v2/"></script>
 
     <style>
         :root {
@@ -373,29 +370,51 @@
             if (e.key === 'Enter') performSearch();
         });
 
-        // Функция поиска с использованием Puter.js
+        // Безопасный поиск с каруселью сырых RAW-прокси
         async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
 
             // Сразу выводим лоадер
-            resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Ищем аниме в базе...</p>';
+            resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Поиск аниме в базе...</p>';
             resultsDropdown.style.display = 'block';
 
-            // Используем стабильный эндпоинт API v3
+            // Базовый рабочий URL API
             const searchUrl = `https://api.anilibria.tv/v3/title/search?search=${encodeURIComponent(query)}`;
+            
+            // Список сырых (raw) прокси, возвращающих чистый JSON напрямую без корявого конвертирования кириллицы
+            const rawProxies = [
+                `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(searchUrl)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(searchUrl)}`
+            ];
 
-            try {
-                // Вызываем облачный fetch от Puter.js — он полностью игнорирует CORS и обходит Cloudflare
-                const response = await puter.net.fetch(searchUrl);
-                if (!response.ok) throw new Error("Сервер не вернул данные.");
+            let success = false;
 
-                const data = await response.json();
-                const list = Array.isArray(data) ? data : (data.list || []);
-                displaySearchResults(list);
-            } catch (err) {
-                console.error("Критическая ошибка при поиске через Puter.js:", err);
-                resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-accent-red); text-align: center;">Не удалось связаться с базой аниме. Попробуйте еще раз.</p>';
+            // Перебираем прокси по очереди
+            for (let i = 0; i < rawProxies.length; i++) {
+                const proxyUrl = rawProxies[i];
+                console.log(`Пробуем сырой прокси-сервер ${i + 1}...`);
+                
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error("Сервер прокси вернул ошибку.");
+                    
+                    const data = await response.json();
+                    const list = Array.isArray(data) ? data : (data.list || []);
+                    
+                    if (list) {
+                        displaySearchResults(list);
+                        success = true;
+                        break; // Выходим из цикла, если поиск сработал!
+                    }
+                } catch (err) {
+                    console.warn(`Прокси ${i + 1} дал сбой при обработке:`, err);
+                }
+            }
+
+            if (!success) {
+                resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-accent-red); text-align: center;">Не удалось связаться с серверами. Попробуйте ввести другой поисковый запрос.</p>';
             }
         }
 

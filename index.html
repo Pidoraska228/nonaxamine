@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nonaxamine — Поиск и просмотр аниме</title>
     
-    <!-- Подключаем библиотеку Hls.js для воспроизведения потокового видео .m3u8 в Chrome/Firefox -->
+    <!-- Подключаем библиотеку Hls.js для воспроизведения потокового видео .m3u8 -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    
+    <!-- Подключаем Puter.js для 100% обхода CORS и блокировок Cloudflare -->
+    <script src="https://js.puter.com/v2/"></script>
 
     <style>
         :root {
@@ -370,94 +373,30 @@
             if (e.key === 'Enter') performSearch();
         });
 
-        // Функция поиска с многоуровневыми прокси
-        function performSearch() {
+        // Функция поиска с использованием Puter.js
+        async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
 
-            // API AniLibria v3
+            // Сразу выводим лоадер
+            resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Ищем аниме в базе...</p>';
+            resultsDropdown.style.display = 'block';
+
+            // Используем стабильный эндпоинт API v3
             const searchUrl = `https://api.anilibria.tv/v3/title/search?search=${encodeURIComponent(query)}`;
-            
-            // Список прокси, которые мы будем пробовать по очереди, если предыдущие упадут
-            const proxies = [
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(searchUrl)}`,
-                `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,
-                `https://cors-anywhere.herokuapp.com/${searchUrl}` // Требует активации, но как резерв
-            ];
 
-            let attempt = 0;
+            try {
+                // Вызываем облачный fetch от Puter.js — он полностью игнорирует CORS и обходит Cloudflare
+                const response = await puter.net.fetch(searchUrl);
+                if (!response.ok) throw new Error("Сервер не вернул данные.");
 
-            function tryFetch(url) {
-                console.log(`Запрос к: ${url}`);
-                fetch(url)
-                    .then(res => {
-                        if (!res.ok) throw new Error("Запрос отклонен сервером.");
-                        return res.json();
-                    })
-                    .then(data => {
-                        // AllOrigins возвращает raw данные, но на некоторых прокси структура может обернуться
-                        const list = Array.isArray(data) ? data : (data.list || []);
-                        displaySearchResults(list);
-                    })
-                    .catch(err => {
-                        console.warn(`Запрос через ${url} завершился ошибкой.`, err);
-                        if (attempt < proxies.length) {
-                            attempt++;
-                            playNextProxy();
-                        } else {
-                            alert("Не удалось загрузить данные. Прокси-серверы временно недоступны. Попробуйте поискать еще раз через пару минут.");
-                        }
-                    });
+                const data = await response.json();
+                const list = Array.isArray(data) ? data : (data.list || []);
+                displaySearchResults(list);
+            } catch (err) {
+                console.error("Критическая ошибка при поиске через Puter.js:", err);
+                resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-accent-red); text-align: center;">Не удалось связаться с базой аниме. Попробуйте еще раз.</p>';
             }
-
-            function playNextProxy() {
-                if (attempt < proxiesList.length) {
-                    const currentProxyUrl = proxiesList[attempt](searchUrl);
-                    console.log(`Пробуем прокси: ${currentProxyUrl}`);
-                    
-                    fetch(currentProxyUrl)
-                        .then(res => {
-                            if (!res.ok) throw new Error();
-                            return res.json();
-                        })
-                        .then(data => {
-                            // Прокси AllOrigins иногда оборачивает данные в JSON-объект, если использовать не raw-метод, но мы обрабатываем это
-                            let list = [];
-                            if (Array.isArray(data)) {
-                                list = data;
-                            } else if (data.list) {
-                                list = data.list;
-                            } else if (data.contents) {
-                                // Обработка стандартной обертки AllOrigins
-                                try {
-                                    const parsed = JSON.parse(data.contents);
-                                    list = Array.isArray(parsed) ? parsed : (parsed.list || []);
-                                } catch(e) {
-                                    list = [];
-                                }
-                            }
-                            displaySearchResults(list);
-                        })
-                        .catch(err => {
-                            console.warn(`Прокси ${attempt} дал сбой.`);
-                            attempt++;
-                            playNextProxy();
-                        });
-                } else {
-                    alert("Все прокси-серверы перегружены. Пожалуйста, попробуйте совершить поиск повторно через 10 секунд.");
-                }
-            }
-
-            // Массив функций-генераторов прокси для гибкости
-            const proxiesList = [
-                (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, // API AllOrigins (самый надежный)
-                (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,         // Corsproxy.io
-                (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` // Codetabs proxy
-            ];
-
-            // Запускаем последовательный перебор
-            console.log("Запуск последовательного опроса прокси...");
-            playNextProxy();
         }
 
         // Вывод результатов поиска

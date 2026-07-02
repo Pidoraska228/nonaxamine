@@ -36,51 +36,40 @@ async function performSearch() {
     // Живой API v3 сервер приложения
     const searchUrl = `https://api.anilibria.app/v3/title/search?search=${encodeURIComponent(query)}`;
     
-    // Список сырых прокси, включая стабильный cors.notesnook.com
-    const rawProxies = [
-        `https://cors.notesnook.com/${searchUrl}`,
-        `https://api.cors.lol/?url=${encodeURIComponent(searchUrl)}`,
-        `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`
+    // Список прокси-серверов для поочередного опроса
+    const proxies = [
+        { name: "AllOrigins (JSON Wrapper)", url: `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`, isContainer: true },
+        { name: "CORS.lol (Raw Proxy)", url: `https://api.cors.lol/?url=${encodeURIComponent(searchUrl)}`, isContainer: false },
+        { name: "CorsProxy.io (Raw Proxy)", url: `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`, isContainer: false },
+        { name: "Notesnook (Raw Proxy)", url: `https://cors.notesnook.com/${searchUrl}`, isContainer: false }
     ];
 
     let success = false;
-    let errorDetails = []; // Сюда будем собирать отчет о сбоях
+    let errorDetails = []; // Сюда собираем отчеты о сбоях
 
-    // Попытка 1: Через AllOrigins JSON-контейнер (самый стабильный для обхода Cloudflare)
-    const containerProxy = `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`;
-    console.log("Запрос через контейнер AllOrigins...");
-    try {
-        const response = await fetch(containerProxy);
-        if (!response.ok) throw new Error(`Статус ответа: ${response.status}`);
-        
-        const wrapper = await response.json();
-        if (!wrapper.contents) throw new Error("Сервер вернул пустой контейнер.");
-        
-        // Безопасно распаковываем текстовый ответ в полноценный JSON
-        const data = JSON.parse(wrapper.contents);
-        const list = Array.isArray(data) ? data : (data.list || []);
-        
-        if (list && list.length >= 0) {
-            displaySearchResults(list);
-            return; // Успешно вышли из функции
-        }
-    } catch (err) {
-        console.warn("Контейнер AllOrigins выдал ошибку:", err);
-        errorDetails.push(`AllOrigins-Container: ${err.message}`);
-    }
-
-    // Попытка 2: Перебираем RAW-прокси по очереди
-    for (let i = 0; i < rawProxies.length; i++) {
-        const proxyUrl = rawProxies[i];
-        const proxyHost = new URL(proxyUrl).hostname;
-        console.log(`Запрос через сырой прокси-сервер ${i + 1} (${proxyHost})...`);
+    // Цикл последовательного опроса прокси
+    for (let i = 0; i < proxies.length; i++) {
+        const proxy = proxies[i];
+        console.log(`Запрос через прокси-сервер ${i + 1} (${proxy.name})...`);
         
         try {
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error(`Статус ответа: ${response.status}`);
+            const response = await fetch(proxy.url);
+            if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
             
-            const data = await response.json();
-            const list = Array.isArray(data) ? data : (data.list || []);
+            let list = null;
+
+            if (proxy.isContainer) {
+                // Если это AllOrigins Wrapper, распаковываем текстовый contents контейнер
+                const wrapper = await response.json();
+                if (!wrapper.contents) throw new Error("Сервер вернул пустой контейнер.");
+                
+                const data = JSON.parse(wrapper.contents);
+                list = Array.isArray(data) ? data : (data.list || []);
+            } else {
+                // Обычный Raw прокси
+                const data = await response.json();
+                list = Array.isArray(data) ? data : (data.list || []);
+            }
             
             if (list) {
                 displaySearchResults(list);
@@ -88,21 +77,21 @@ async function performSearch() {
                 break; // Выходим из цикла, если поиск сработал!
             }
         } catch (err) {
-            console.warn(`Прокси ${i + 1} завершился с ошибкой:`, err);
-            errorDetails.push(`Прокси ${i + 1} (${proxyHost}): ${err.message}`);
+            console.warn(`Прокси ${proxy.name} завершился с ошибкой:`, err);
+            errorDetails.push(`${proxy.name}: ${err.message}`);
         }
     }
 
     if (!success) {
-        // Выводим интерактивный детальный отчет об ошибках прямо на экран для диагностики!
+        // Гарантированно выводим подробный технический отчет прямо на экран
         resultsGrid.innerHTML = `
             <div style="grid-column: span 4; text-align: center; padding: 25px; background: rgba(255, 51, 51, 0.03); border: 1px dashed var(--nx-accent-red); border-radius: 12px; box-sizing: border-box;">
                 <p style="color: var(--nx-accent-red); font-weight: bold; margin: 0 0 10px 0; font-size: 16px;">Не удалось связаться с серверами Анилибрии.</p>
                 <p style="color: var(--nx-text-secondary); font-size: 13px; margin: 0 0 20px 0;">Все методы подключения заблокированы Cloudflare.</p>
                 
-                <details style="text-align: left; display: inline-block; width: 100%; max-width: 600px; background: #000; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; color: #ff8888; border: 1px solid var(--nx-border-color); box-sizing: border-box;">
-                    <summary style="cursor: pointer; color: var(--nx-text-primary); font-weight: bold; outline: none; user-select: none;">Показать технические детали ошибок</summary>
-                    <pre style="margin: 12px 0 0 0; white-space: pre-wrap; word-break: break-all; line-height: 1.5;">${errorDetails.join('\n')}</pre>
+                <details style="text-align: left; display: inline-block; width: 100%; max-width: 600px; background: #000; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; color: #ff8888; border: 1px solid var(--nx-border-color); box-sizing: border-box;" open>
+                    <summary style="cursor: pointer; color: var(--nx-text-primary); font-weight: bold; outline: none; user-select: none;">Технические детали ошибок</summary>
+                    <pre style="margin: 12px 0 0 0; white-space: pre-wrap; word-break: break-all; line-height: 1.5; font-family: monospace;">${errorDetails.join('\n')}</pre>
                 </details>
             </div>
         `;

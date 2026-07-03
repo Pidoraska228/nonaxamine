@@ -384,7 +384,8 @@ async function performSearch() {
     
     // Список прокси-серверов для поочередного опроса
     const proxies = [
-        { name: "Cloudflare Worker Proxy", url: `https://cors.bwa.workers.dev/${searchUrl}`, isContainer: false },
+        // Исправлен формат вызова Cloudflare Worker (теперь передаем через ?url=)
+        { name: "Cloudflare Worker Proxy", url: `https://cors.bwa.workers.dev/?url=${encodeURIComponent(searchUrl)}`, isContainer: false },
         { name: "CorsProxy.io (Raw Proxy)", url: `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`, isContainer: false },
         { name: "AllOrigins (JSON Wrapper)", url: `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`, isContainer: true },
         { name: "CORS.lol (Raw Proxy)", url: `https://api.cors.lol/?url=${encodeURIComponent(searchUrl)}`, isContainer: false }

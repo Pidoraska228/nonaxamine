@@ -15,10 +15,10 @@ module.exports = async (req, res) => {
 
     let targetUrl = '';
     if (id) {
-        // ЭНДПОИНТ ДЛЯ ПОЛУЧЕНИЯ СЕРИЙ (БЕЗ CATALOG - ЭТО ОЧЕНЬ ВАЖНО!)
-        targetUrl = `https://aniliberty.top/api/v1/anime/releases/${id}/episodes`;
+        // ОФИЦИАЛЬНЫЙ ЭНДПОИНТ ДЛЯ СЕРИЙ В API V1 (НАПРЯМУЮ ЧЕРЕЗ ANIME/:ID/EPISODES)
+        targetUrl = `https://aniliberty.top/api/v1/anime/${id}/episodes`;
     } else if (query) {
-        // ЭНДПОИНТ ДЛЯ ПОИСКА АНИМЕ (С CATALOG)
+        // ЭНДПОИНТ ДЛЯ ПОИСКА АНИМЕ В API V1
         targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases?search=${encodeURIComponent(query)}`;
     } else {
         return res.status(400).json({ error: 'Параметры q или id отсутствуют' });

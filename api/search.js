@@ -15,16 +15,20 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Поисковый запрос пуст' });
     }
 
-    // Рабочий эндпоинт API v1 Анилибрии на домене aniliberty.top
-    const targetUrl = `https://aniliberty.top/api/v1/anime/releases?search=${encodeURIComponent(query)}`;
-    
-    // Используем контейнер AllOrigins на бэкенде Vercel для полного обхода блокировок IP Amazon/Vercel
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+    // ОФИЦИАЛЬНОЕ ЗЕРКАЛО БЕЗ CLOUDFLARE
+    const targetUrl = `https://api.api-anilibria.ru/v3/title/search?search=${encodeURIComponent(query)}`;
+
+    const options = {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json'
+        }
+    };
 
     try {
-        console.log(`Сервер запускает двойной обход через AllOrigins для: "${query}"`);
+        console.log(`Запрос к официальному зеркалу Анилибрии без Cloudflare для: "${query}"`);
         
-        https.get(proxyUrl, (response) => {
+        https.get(targetUrl, options, (response) => {
             let data = '';
 
             response.on('data', (chunk) => {
@@ -33,17 +37,11 @@ module.exports = async (req, res) => {
 
             response.on('end', () => {
                 try {
-                    const wrapper = JSON.parse(data);
-                    if (!wrapper.contents) {
-                        return res.status(500).json({ error: 'Прокси вернул пустой контейнер' });
-                    }
-                    
-                    // Распаковываем ответ базы из контейнера AllOrigins
-                    const parsedData = JSON.parse(wrapper.contents);
+                    const parsedData = JSON.parse(data);
                     return res.status(200).json(parsedData);
                 } catch (parseError) {
                     return res.status(500).json({ 
-                        error: 'Ошибка парсинга ответа от API v1', 
+                        error: 'Ошибка парсинга ответа от зеркала', 
                         details: parseError.message,
                         rawData: data.substring(0, 300)
                     });
@@ -51,7 +49,7 @@ module.exports = async (req, res) => {
             });
 
         }).on("error", (err) => {
-            return res.status(500).json({ error: 'Ошибка сети при обращении к прокси', details: err.message });
+            return res.status(500).json({ error: 'Ошибка сети при обращении к зеркалу', details: err.message });
         });
     } catch (error) {
         return res.status(500).json({ error: 'Критическая ошибка сервера', details: error.message });

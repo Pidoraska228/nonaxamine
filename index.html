@@ -580,7 +580,7 @@ const localDatabase = [
     },
     {
         id: "attack-on-titan",
-        name: "Атака титанов",
+        name: "Акацуки титанов",
         description: "Человечество живет за тремя огромными стенами, защищающими их от гигантских плотоядных монстров — титанов. Но мирная жизнь заканчивается в один день.",
         posters: { medium: { url: "https://images.unsplash.com/photo-1541562232579-512a21360020?q=80&w=300" } },
         player: {
@@ -729,7 +729,7 @@ async function performSearch() {
     }
 }
 
-// Вывод результатов поиска (адаптировано под API v1)
+// Вывод результатов поиска
 function displaySearchResults(animeList) {
     resultsGrid.innerHTML = '';
     if (animeList.length === 0) {
@@ -746,14 +746,16 @@ function displaySearchResults(animeList) {
         const animeName = (anime.name && anime.name.main) || anime.name || "Аниме";
         
         // Извлекаем правильный URL постера из нового формата API v1
-        let posterUrl = "https://via.placeholder.com/130x180?text=Anime";
-        if (anime.poster && anime.poster.preview) {
-            posterUrl = `https://aniliberty.top${anime.poster.preview}`;
-        } else if (anime.optimized && anime.optimized.src) {
-            posterUrl = `https://aniliberty.top${anime.optimized.src}`;
-        } else if (anime.posters && anime.posters.medium) {
-            posterUrl = `https://aniliberty.top${anime.posters.medium.url}`;
-        }
+        let posterUrl = "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&width=300";
+        try {
+            if (anime.poster && anime.poster.preview) {
+                posterUrl = `https://aniliberty.top${anime.poster.preview}`;
+            } else if (anime.optimized && anime.optimized.src) {
+                posterUrl = `https://aniliberty.top${anime.optimized.src}`;
+            } else if (anime.posters && anime.posters.medium) {
+                posterUrl = `https://aniliberty.top${anime.posters.medium.url}`;
+            }
+        } catch(e) {}
 
         card.innerHTML = `
             <img src="${posterUrl}" alt="${animeName}">
@@ -773,8 +775,9 @@ function displaySearchResults(animeList) {
     resultsDropdown.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Загрузка аниме и его данных (Абсолютно защищенный метод)
+// Загрузка аниме и его данных (Полностью неуязвимый метод)
 async function loadAnime(anime) {
+    if (!anime) return;
     currentAnimeData = anime;
     
     // Защищенный парсинг названия
@@ -786,7 +789,7 @@ async function loadAnime(anime) {
     if (animeTitleDisplay) animeTitleDisplay.innerText = animeName;
     if (animeDescription) animeDescription.innerText = anime.description || "Описание сюжета временно отсутствует.";
     
-    // Защищенная загрузка постера
+    // Загрузка постера
     let posterUrl = "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&width=300";
     try {
         if (anime.poster && anime.poster.preview) {
@@ -837,21 +840,22 @@ function renderEpisodes(episodesList) {
     // Преобразуем массив серий в удобную структуру, если пришел массив (API v1)
     let formattedList = {};
     try {
-        if (Array.isArray(episodesList)) {
+        if (episodesList && Array.isArray(episodesList)) {
             episodesList.forEach(ep => {
-                // В API v1 номер серии лежит в ep.ordinal
                 formattedList[ep.ordinal] = {
                     name: ep.name || `Серия ${ep.ordinal}`,
                     hls: ep.hls || ep.video || {},
                     skips: ep.skips || {}
                 };
             });
-        } else {
+        } else if (episodesList) {
             formattedList = episodesList; // Если пришел объект (старый формат/локальный)
         }
     } catch(e) { console.error("Ошибка форматирования списка серий:", e); }
 
-    const episodeKeys = Object.keys(formattedList);
+    // Безопасное получение ключей (предохраняет от краша при null/undefined)
+    const episodeKeys = formattedList ? Object.keys(formattedList) : [];
+    
     if (episodeKeys.length === 0) {
         episodesContainer.innerHTML = '<p style="color: var(--nx-text-secondary); text-align: center; grid-column: span 10;">Для этого релиза пока нет серий.</p>';
         return;
@@ -866,11 +870,14 @@ function renderEpisodes(episodesList) {
     });
 
     // Автоматически запускаем первую серию
-    loadEpisode(episodeKeys[0], formattedList);
+    if (episodeKeys.length > 0) {
+        loadEpisode(episodeKeys[0], formattedList);
+    }
 }
 
 // Запуск конкретной серии
 function loadEpisode(episodeKey, episodesList) {
+    if (!episodesList || !episodeKey) return;
     const episode = episodesList[episodeKey];
     if (!episode) return;
     
@@ -907,6 +914,7 @@ function loadEpisode(episodeKey, episodesList) {
 
 // Старт HLS.js
 function playHlsStream(url) {
+    if (!url) return;
     if (hlsInstance) {
         hlsInstance.destroy();
     }
@@ -940,15 +948,6 @@ player.addEventListener('timeupdate', () => {
     if (!currentAnimeData || !currentEpisodeKey) return;
 
     const time = player.currentTime;
-    
-    let episodesList = {};
-    try {
-        if (currentAnimeData.player && currentAnimeData.player.list) {
-            episodesList = currentAnimeData.player.list;
-        } else if (currentAnimeData.episodes) {
-            episodesList = currentAnimeData.episodes; 
-        }
-    } catch(e) {}
     
     // Временный костыль для таймкодов в демо-режиме (опенинг с 2 по 5 секунды)
     if (time >= 2 && time < 5) {

@@ -534,11 +534,11 @@
 
     <!-- ВЕСЬ СЛОЖНЫЙ JS-КОД ВСТРОЕН НАПРЯМУЮ СЮДА — ЭТО ГАРАНТИРУЕТ ОДНОВРЕМЕННОЕ СТИРАНИЕ КЭША -->
     <script>
-        // ЛОКАЛЬНАЯ БАЗА ДАННЫХ АНИМЕ (Для офлайн/демо режима)
+// ЛОКАЛЬНАЯ БАЗА ДАННЫХ АНИМЕ (Для офлайн/демо режима)
 const localDatabase = [
     {
         id: "naruto",
-        names: { ru: "Наруто: Ураганные хроники" },
+        name: "Наруто: Ураганные хроники",
         year: 2007,
         rating: "9.5",
         heroBackground: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&width=1200",
@@ -555,7 +555,7 @@ const localDatabase = [
     },
     {
         id: "demon-slayer",
-        names: { ru: "Клинок, рассекающий демонов" },
+        name: "Клинок, рассекающий демонов",
         description: "Тандзиро Камадо становится убийцей демонов, чтобы спасти свою сестру Нэдзуко, которая превратилась в монстра, и отомстить за гибель своей семьи.",
         posters: { medium: { url: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300" } },
         player: {
@@ -568,7 +568,7 @@ const localDatabase = [
     },
     {
         id: "jujutsu-kaisen",
-        names: { ru: "Магическая битва" },
+        name: "Магическая битва",
         description: "Старшеклассник Юдзи Итадори проглатывает проклятый палец могущественного демона, чтобы спасти друзей, и становится сосудом для Двуликого Сукуны.",
         posters: { medium: { url: "https://images.unsplash.com/photo-1627337376130-10906f2a704e?q=80&w=300" } },
         player: {
@@ -580,7 +580,7 @@ const localDatabase = [
     },
     {
         id: "attack-on-titan",
-        names: { ru: "Атака титанов" },
+        name: "Акацуки титанов",
         description: "Человечество живет за тремя огромными стенами, защищающими их от гигантских плотоядных монстров — титанов. Но мирная жизнь заканчивается в один день.",
         posters: { medium: { url: "https://images.unsplash.com/photo-1541562232579-512a21360020?q=80&w=300" } },
         player: {
@@ -601,34 +601,14 @@ const skipBtn = document.getElementById('nonax-skip-btn');
 const searchInput = document.getElementById('search-input');
 const searchBtn = document.getElementById('search-btn');
 
-// Объявляем через let, чтобы скрипт мог сам создать их в случае отсутствия
-let resultsDropdown = document.getElementById('results-dropdown');
-let resultsGrid = document.getElementById('results-grid');
+const resultsDropdown = document.getElementById('results-dropdown');
+const resultsGrid = document.getElementById('results-grid');
 
-// САМОЛЕЧЕНИЕ КОДА: Если в HTML нет блоков поиска, скрипт создаст их сам на лету!
-if (!resultsDropdown || !resultsGrid) {
-    console.warn("Внимание: Поисковые блоки не найдены в HTML. Скрипт создает их автоматически...");
-    
-    resultsDropdown = document.createElement('div');
-    resultsDropdown.id = 'results-dropdown';
-    resultsDropdown.className = 'nx-results-dropdown';
-    resultsDropdown.innerHTML = `
-        <h3 class="nx-section-title" style="margin-bottom: 15px;">Результаты поиска</h3>
-        <div id="results-grid" class="nx-results-grid"></div>
-    `;
-    
-    // Вставляем блок прямо перед каталогом
-    const pageContainer = document.querySelector('.nx-page-container');
-    const catalogPage = document.getElementById('catalog-page');
-    if (pageContainer && catalogPage) {
-        pageContainer.insertBefore(resultsDropdown, catalogPage);
-    } else {
-        document.body.appendChild(resultsDropdown);
-    }
-    
-    // Перенаходим созданную сетку результатов
-    resultsGrid = document.getElementById('results-grid');
-}
+const animePoster = document.getElementById('anime-poster');
+const animeTitleDisplay = document.getElementById('anime-title-display');
+const episodeSubtitleDisplay = document.getElementById('episode-subtitle-display');
+const episodesContainer = document.getElementById('episode-list-container');
+const animeDescription = document.getElementById('anime-description');
 
 // Элементы главной страницы
 const catalogGridEl = document.getElementById('catalog-grid-el');
@@ -669,10 +649,10 @@ function initCatalog() {
             <div class="nx-card-image-box">
                 <span class="nx-card-rating">${anime.rating || "9.0"}</span>
                 <span class="nx-card-year">${anime.year || "2023"}</span>
-                <img src="${anime.posters.medium.url}" alt="${anime.names.ru}">
+                <img src="${anime.posters.medium.url}" alt="${anime.name}">
             </div>
             <div class="nx-card-info">
-                <h4 class="nx-card-title">${anime.names.ru}</h4>
+                <h4 class="nx-card-title">${anime.name}</h4>
                 <p class="nx-card-episodes">Все серии в HD</p>
             </div>
         `;
@@ -684,7 +664,7 @@ function initCatalog() {
     });
 
     const heroAnime = localDatabase[0];
-    heroTitle.innerText = heroAnime.names.ru;
+    heroTitle.innerText = heroAnime.name;
     heroDesc.innerText = heroAnime.description;
     if (heroAnime.heroBackground) {
         heroBannerEl.style.backgroundImage = `url('${heroAnime.heroBackground}')`;
@@ -695,45 +675,48 @@ function initCatalog() {
     };
 }
 
-// Усовершенствованный поиск с 3-секундным таймаутом отсечки
+// Усовершенствованный поиск с интеграцией Vercel-бэкенда (адаптировано под API v1)
 async function performSearch() {
     const query = searchInput.value.trim();
     if (!query) return;
 
+    // Выводим лоадер
     resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Поиск аниме в базе...</p>';
     resultsDropdown.style.display = 'block';
 
     const serverUrl = `${VERCEL_SERVER_URL}/api/search?q=${encodeURIComponent(query)}`;
 
-    // Настраиваем прерыватель запроса на 3 секунды
+    // Настраиваем прерыватель запроса на 10 секунд (для холодного старта Vercel)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 100000000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
         console.log("Запрос к собственному серверу Vercel...");
         const response = await fetch(serverUrl, { signal: controller.signal });
-        clearTimeout(timeoutId); // Отменяем таймер, если сервер ответил вовремя
+        clearTimeout(timeoutId); // Отменяем таймер
 
         if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
 
         const data = await response.json();
-        const list = Array.isArray(data) ? data : (data.list || []);
+        
+        // В новом API v1 результаты поиска возвращаются как массив объектов напрямую или внутри поля data
+        const list = Array.isArray(data) ? data : (data.data || data.list || []);
         
         displaySearchResults(list);
     } catch (err) {
         clearTimeout(timeoutId); // Отменяем таймер при любой ошибке
         console.warn("Сбой бэкенда Vercel или таймаут ожидания. Запускаем локальный поиск...", err);
         
-        // Мгновенный резервный поиск по нашей локальной базе данных
+        // Резервный поиск по нашей локальной базе данных
         const localResults = localDatabase.filter(anime => 
-            anime.names.ru.toLowerCase().includes(query.toLowerCase()) || 
+            anime.name.toLowerCase().includes(query.toLowerCase()) || 
             anime.description.toLowerCase().includes(query.toLowerCase())
         );
         displaySearchResults(localResults);
     }
 }
 
-// Вывод результатов поиска
+// Вывод результатов поиска (адаптировано под API v1)
 function displaySearchResults(animeList) {
     resultsGrid.innerHTML = '';
     if (animeList.length === 0) {
@@ -746,12 +729,19 @@ function displaySearchResults(animeList) {
         const card = document.createElement('div');
         card.className = 'nx-anime-card';
         
-        let posterPath = anime.posters && anime.posters.medium ? anime.posters.medium.url : '';
-        const posterUrl = posterPath.startsWith('http') ? posterPath : `https://anilibria.top${posterPath}`;
+        // Название релиза в API v1 лежит в поле name
+        const animeName = anime.name || (anime.names && anime.names.ru) || "Аниме";
+        
+        // Постеры в API v1 могут быть относительными или иметь другую структуру
+        let posterUrl = "https://via.placeholder.com/130x180?text=Anime";
+        if (anime.posters && anime.posters.medium) {
+            const path = anime.posters.medium.url;
+            posterUrl = path.startsWith('http') ? path : `https://anilibria.top${path}`;
+        }
 
         card.innerHTML = `
-            <img src="${posterUrl}" alt="${anime.names.ru}">
-            <div class="nx-anime-card-title">${anime.names.ru}</div>
+            <img src="${posterUrl}" alt="${animeName}">
+            <div class="nx-anime-card-title">${animeName}</div>
         `;
 
         card.addEventListener('click', () => {
@@ -767,40 +757,58 @@ function displaySearchResults(animeList) {
     resultsDropdown.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Загрузка аниме и его данных
+// Загрузка аниме и его данных (адаптировано под API v1)
 function loadAnime(anime) {
     currentAnimeData = anime;
-    animeTitleDisplay.innerText = anime.names.ru;
-    animeDescription.innerText = anime.description || "Описание временно отсутствует.";
-    animePoster.src = anime.posters.medium.url;
+    
+    const animeName = anime.name || (anime.names && anime.names.ru) || "Аниме";
+    animeTitleDisplay.innerText = animeName;
+    animeDescription.innerText = anime.description || "Описание сюжета временно отсутствует.";
+    
+    // Загрузка постера
+    let posterUrl = "https://via.placeholder.com/130x180?text=Anime";
+    if (anime.posters && anime.posters.medium) {
+        const path = anime.posters.medium.url;
+        posterUrl = path.startsWith('http') ? path : `https://anilibria.top${path}`;
+    }
+    animePoster.src = posterUrl;
 
     episodesContainer.innerHTML = '';
     
-    if (!anime.player || !anime.player.list) {
+    // В API v1 серии лежат в player.list (если пришли по старому формату) или в эпизодах.
+    // Сделаем надежную проверку на оба случая
+    let episodesList = {};
+    if (anime.player && anime.player.list) {
+        episodesList = anime.player.list;
+    } else if (anime.episodes) {
+        episodesList = anime.episodes;
+    } else {
         episodesContainer.innerHTML = '<p style="color: var(--nx-text-secondary);">У этого релиза пока нет серий в плеере.</p>';
         return;
     }
 
-    const episodeKeys = Object.keys(anime.player.list);
+    const episodeKeys = Object.keys(episodesList);
 
     episodeKeys.forEach(key => {
         const btn = document.createElement('button');
         btn.className = 'nx-episode-btn';
         btn.innerText = key;
-        btn.addEventListener('click', () => loadEpisode(key));
+        btn.addEventListener('click', () => loadEpisode(key, episodesList));
         episodesContainer.appendChild(btn);
     });
 
     if (episodeKeys.length > 0) {
-        loadEpisode(episodeKeys[0]);
+        loadEpisode(episodeKeys[0], episodesList);
     }
 }
 
-// Запуск серии
-function loadEpisode(episodeKey) {
+// Запуск серии (адаптировано под API v1)
+function loadEpisode(episodeKey, episodesList) {
     currentEpisodeKey = episodeKey;
-    const episode = currentAnimeData.player.list[episodeKey];
-    const videoHost = currentAnimeData.player.host || "cache.libria.fun";
+    const episode = episodesList[episodeKey];
+    
+    // В API v1 видеохост может приходить в объекте player или браться по умолчанию
+    const videoHost = (currentAnimeData.player && currentAnimeData.player.host) || "cache.libria.fun";
 
     document.querySelectorAll('.nx-episode-btn').forEach(btn => {
         if (btn.innerText === episodeKey) btn.classList.add('active');
@@ -809,7 +817,14 @@ function loadEpisode(episodeKey) {
 
     episodeSubtitleDisplay.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
 
-    const hlsPath = episode.hls.fhd || episode.hls.hd || episode.hls.sd;
+    // Находим HLS поток (.m3u8) в структуре API v1
+    let hlsPath = "";
+    if (episode.hls) {
+        hlsPath = episode.hls.fhd || episode.hls.hd || episode.hls.sd;
+    } else if (episode.video) {
+        hlsPath = episode.video.fhd || episode.video.hd || episode.video.sd;
+    }
+
     if (!hlsPath) {
         alert("Не найден рабочий видеопоток для данной серии.");
         return;
@@ -849,13 +864,23 @@ function playHlsStream(url) {
     skipBtn.style.display = 'none';
 }
 
-// Слежение за таймкодами опенингов
+// Слежение за таймкодами опенингов (адаптировано под API v1)
 player.addEventListener('timeupdate', () => {
     if (!currentAnimeData || !currentEpisodeKey) return;
 
     const time = player.currentTime;
-    const episode = currentAnimeData.player.list[currentEpisodeKey];
+    
+    let episodesList = {};
+    if (currentAnimeData.player && currentAnimeData.player.list) {
+        episodesList = currentAnimeData.player.list;
+    } else if (currentAnimeData.episodes) {
+        episodesList = currentAnimeData.episodes;
+    }
+    
+    const episode = episodesList[currentEpisodeKey];
+    if (!episode) return;
 
+    // В API v1 таймкоды лежат в skips.opening
     if (episode.skips && episode.skips.opening && episode.skips.opening.length === 2) {
         const start = episode.skips.opening[0];
         const end = episode.skips.opening[1];

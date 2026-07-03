@@ -601,13 +601,6 @@ const skipBtn = document.getElementById('nonax-skip-btn');
 const searchInput = document.getElementById('search-input');
 const searchBtn = document.getElementById('search-btn');
 
-// ЭЛЕМЕНТЫ СТРАНИЦЫ ПРОСМОТРА (ВОТ ЭТИ ПРОПУЩЕННЫЕ СТРОКИ МЫ ВЕРНУЛИ)
-const animePoster = document.getElementById('anime-poster');
-const animeTitleDisplay = document.getElementById('anime-title-display');
-const episodeSubtitleDisplay = document.getElementById('episode-subtitle-display');
-const episodesContainer = document.getElementById('episode-list-container');
-const animeDescription = document.getElementById('anime-description');
-
 // Объявляем через let, чтобы скрипт мог сам создать их в случае отсутствия
 let resultsDropdown = document.getElementById('results-dropdown');
 let resultsGrid = document.getElementById('results-grid');
@@ -712,7 +705,7 @@ async function performSearch() {
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
-        console.log("Запрос к собственному серверу Vercel...");
+        console.log("Запрос к собственному server Vercel...");
         const response = await fetch(serverUrl, { signal: controller.signal });
         clearTimeout(timeoutId); // Отменяем таймер, если сервер ответил вовремя
 
@@ -737,7 +730,7 @@ async function performSearch() {
     }
 }
 
-// Вывод результатов поиска (адаптировано под API v1)
+// Вывод результатов поиска
 function displaySearchResults(animeList) {
     resultsGrid.innerHTML = '';
     if (animeList.length === 0) {
@@ -783,19 +776,25 @@ function displaySearchResults(animeList) {
     resultsDropdown.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Загрузка аниме и его данных (Абсолютно защищенный метод)
+// Загрузка аниме и его данных (Полностью самодостаточный метод)
 async function loadAnime(anime) {
     if (!anime) return;
     currentAnimeData = anime;
     
+    // Динамически находим элементы прямо в функции для 100% защиты от багов кэширования!
+    const titleEl = document.getElementById('anime-title-display');
+    const descEl = document.getElementById('anime-description');
+    const posterEl = document.getElementById('anime-poster');
+    const epsContainer = document.getElementById('episode-list-container');
+
     // Защищенный парсинг названия
     let animeName = "Аниме";
     try {
         animeName = (anime.name && anime.name.main) || anime.name || "Аниме";
     } catch(e) { console.warn("Ошибка парсинга имени", e); }
     
-    if (animeTitleDisplay) animeTitleDisplay.innerText = animeName;
-    if (animeDescription) animeDescription.innerText = anime.description || "Описание сюжета временно отсутствует.";
+    if (titleEl) titleEl.innerText = animeName;
+    if (descEl) descEl.innerText = anime.description || "Описание сюжета временно отсутствует.";
     
     // Загрузка постера
     let posterUrl = "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&width=300";
@@ -809,10 +808,10 @@ async function loadAnime(anime) {
         }
     } catch(e) { console.warn("Ошибка загрузки постера", e); }
     
-    if (animePoster) animePoster.src = posterUrl;
+    if (posterEl) posterEl.src = posterUrl;
 
-    if (episodesContainer) {
-        episodesContainer.innerHTML = '<p style="color: var(--nx-text-secondary); text-align: center; grid-column: span 10;">Загружаем серии через сервер...</p>';
+    if (epsContainer) {
+        epsContainer.innerHTML = '<p style="color: var(--nx-text-secondary); text-align: center; grid-column: span 10;">Загружаем серии через сервер...</p>';
     }
     
     // Если это локальное демо-аниме, серии уже есть в объекте
@@ -828,22 +827,21 @@ async function loadAnime(anime) {
         if (!response.ok) throw new Error();
         
         const episodesData = await response.json();
-        
-        // В новом API v1 серии возвращаются в виде массива объектов или внутри поля data
         const episodesList = episodesData.data || episodesData || [];
         renderEpisodes(episodesList);
     } catch (err) {
         console.error("Не удалось загрузить серии через Vercel:", err);
-        if (episodesContainer) {
-            episodesContainer.innerHTML = '<p style="color: var(--nx-accent-red); text-align: center; grid-column: span 10;">Не удалось загрузить серии для данного релиза.</p>';
+        if (epsContainer) {
+            epsContainer.innerHTML = '<p style="color: var(--nx-accent-red); text-align: center; grid-column: span 10;">Не удалось загрузить серии для данного релиза.</p>';
         }
     }
 }
 
 // Защищенная функция рендеринга кнопок серий в сетку
 function renderEpisodes(episodesList) {
-    if (!episodesContainer) return;
-    episodesContainer.innerHTML = '';
+    const epsContainer = document.getElementById('episode-list-container');
+    if (!epsContainer) return;
+    epsContainer.innerHTML = '';
     
     // Преобразуем массив серий в удобную структуру, если пришел массив (API v1)
     let formattedList = {};
@@ -865,7 +863,7 @@ function renderEpisodes(episodesList) {
     const episodeKeys = formattedList ? Object.keys(formattedList) : [];
     
     if (episodeKeys.length === 0) {
-        episodesContainer.innerHTML = '<p style="color: var(--nx-text-secondary); text-align: center; grid-column: span 10;">Для этого релиза пока нет серий.</p>';
+        epsContainer.innerHTML = '<p style="color: var(--nx-text-secondary); text-align: center; grid-column: span 10;">Для этого релиза пока нет серий.</p>';
         return;
     }
 
@@ -874,7 +872,7 @@ function renderEpisodes(episodesList) {
         btn.className = 'nx-episode-btn';
         btn.innerText = key;
         btn.addEventListener('click', () => loadEpisode(key, formattedList));
-        episodesContainer.appendChild(btn);
+        epsContainer.appendChild(btn);
     });
 
     // Автоматически запускаем первую серию
@@ -897,8 +895,9 @@ function loadEpisode(episodeKey, episodesList) {
         else btn.classList.remove('active');
     });
 
-    if (episodeSubtitleDisplay) {
-        episodeSubtitleDisplay.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
+    const subTitleEl = document.getElementById('episode-subtitle-display');
+    if (subTitleEl) {
+        subTitleEl.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
     }
 
     // Находим HLS поток (.m3u8) в структуре API v1

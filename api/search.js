@@ -15,30 +15,30 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Поисковый запрос пуст' });
     }
 
-    const targetUrl = `https://api.anilibria.tv/v3/title/search?search=${encodeURIComponent(query)}`;
+    // НОВЫЙ РАБОЧИЙ ЭНДПОИНТ API v1 Анилибрии на домене anilibria.top
+    const targetUrl = `https://anilibria.top/api/v1/anime/releases?search=${encodeURIComponent(query)}`;
 
-    // Безопасный запрос через встроенный модуль https (совместимый со всеми версиями Node.js)
     try {
+        console.log(`Запрос к новому API v1 для: "${query}"`);
+        
         https.get(targetUrl, (response) => {
             let data = '';
 
-            // Собираем кусочки данных
             response.on('data', (chunk) => {
                 data += chunk;
             });
 
-            // Когда все данные получены
             response.on('end', () => {
                 try {
                     const parsedData = JSON.parse(data);
                     return res.status(200).json(parsedData);
                 } catch (parseError) {
-                    return res.status(500).json({ error: 'Ошибка парсинга ответа от Анилибрии', details: parseError.message });
+                    return res.status(500).json({ error: 'Ошибка парсинга ответа от API v1', details: parseError.message });
                 }
             });
 
         }).on("error", (err) => {
-            return res.status(500).json({ error: 'Ошибка сетевого запроса к Анилибрии', details: err.message });
+            return res.status(500).json({ error: 'Ошибка сети при обращении к API v1', details: err.message });
         });
     } catch (error) {
         return res.status(500).json({ error: 'Критическая ошибка сервера', details: error.message });

@@ -15,11 +15,11 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Поисковый запрос пуст' });
     }
 
-    // НОВЫЙ РАБОЧИЙ ЭНДПОИНТ API v1 Анилибрии на домене anilibria.top
-    const targetUrl = `https://anilibria.top/api/v1/anime/releases?search=${encodeURIComponent(query)}`;
+    // ИСПОЛЬЗУЕМ ОФИЦИАЛЬНЫЙ ЖИВОЙ ДОМЕН ANILIBERTY.TOP (API V1)
+    const targetUrl = `https://aniliberty.top/api/v1/anime/releases?search=${encodeURIComponent(query)}`;
 
     try {
-        console.log(`Запрос к новому API v1 для: "${query}"`);
+        console.log(`Запрос к живому API v1 для: "${query}"`);
         
         https.get(targetUrl, (response) => {
             let data = '';

@@ -820,14 +820,16 @@ async function loadAnime(anime) {
         return;
     }
 
-    // Если это реальное аниме из сети — делаем динамический запрос серий по ID через Vercel
+    // Если это реальное аниме из сети — делаем динамический запрос ДЕТАЛЕЙ РЕЛИЗА по ID через Vercel
     try {
-        console.log(`Запрашиваем серии для ID: ${anime.id}`);
+        console.log(`Запрашиваем детали релиза для ID: ${anime.id}`);
         const response = await fetch(`${VERCEL_SERVER_URL}/api/search?id=${anime.id}`);
         if (!response.ok) throw new Error();
         
-        const episodesData = await response.json();
-        const episodesList = episodesData.data || episodesData || [];
+        const releaseData = await response.json();
+        
+        // В новом API v1 детали релиза возвращаются как объект. Эпизоды лежат в поле episodes или data.episodes
+        const episodesList = releaseData.episodes || (releaseData.data && releaseData.data.episodes) || [];
         renderEpisodes(episodesList);
     } catch (err) {
         console.error("Не удалось загрузить серии через Vercel:", err);

@@ -306,7 +306,7 @@
             border: 1px solid var(--nx-border-color);
             border-radius: 10px;
             padding: 15px;
-            margin-bottom: 10px;
+            margin-bottom: 25px;
             max-height: 450px; /* Ограничиваем высоту выпадающего списка */
             overflow-y: auto;  /* Включаем прокрутку внутри списка результатов */
         }
@@ -459,6 +459,12 @@
     <!-- Основной контейнер страниц -->
     <div class="nx-page-container">
 
+        <!-- Выпадающий блок результатов поиска (ВОТ ЭТОТ ПРОПУЩЕННЫЙ БЛОК БЫЛ ПРИЧИНОЙ ОШИБКИ) -->
+        <div id="results-dropdown" class="nx-results-dropdown">
+            <h3 class="nx-section-title" style="margin-bottom: 15px;">Результаты поиска</h3>
+            <div id="results-grid" class="nx-results-grid"></div>
+        </div>
+
         <!-- ==========================================================================
              СТРАНИЦА КАТАЛОГА (ГЛАВНАЯ)
              ========================================================================== -->
@@ -529,327 +535,327 @@
     <!-- ВЕСЬ СЛОЖНЫЙ JS-КОД ВСТРОЕН НАПРЯМУЮ СЮДА — ЭТО ГАРАНТИРУЕТ ОДНОВРЕМЕННОЕ СТИРАНИЕ КЭША -->
     <script>
         // ЛОКАЛЬНАЯ БАЗА ДАННЫХ АНИМЕ (Для офлайн/демо режима)
-const localDatabase = [
-    {
-        id: "naruto",
-        names: { ru: "Наруто: Ураганные хроники" },
-        year: 2007,
-        rating: "9.5",
-        heroBackground: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&width=1200",
-        description: "Прошло два года с тех пор, как Наруто покинул Коноху для тяжелых тренировок. Саске всё еще находится у Оротимару, а таинственная организация Акацуки начинает активную охоту на хвостатых зверей.",
-        posters: { medium: { url: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&width=300" } },
-        player: {
-            host: "",
-            list: {
-                "1": { name: "Возвращение домой", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 5] } },
-                "2": { name: "Акацуки начинают действовать", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [1, 4] } },
-                "3": { name: "Результаты тренировок", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 6] } }
+        const localDatabase = [
+            {
+                id: "naruto",
+                names: { ru: "Наруто: Ураганные хроники" },
+                year: 2007,
+                rating: "9.5",
+                heroBackground: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&width=1200",
+                description: "Прошло два года с тех пор, как Наруто покинул Коноху для тяжелых тренировок. Саске всё еще находится у Оротимару, а таинственная организация Акацуки начинает активную охоту на хвостатых зверей.",
+                posters: { medium: { url: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&width=300" } },
+                player: {
+                    host: "",
+                    list: {
+                        "1": { name: "Возвращение домой", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 5] } },
+                        "2": { name: "Акацуки начинают действовать", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [1, 4] } },
+                        "3": { name: "Результаты тренировок", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 6] } }
+                    }
+                }
+            },
+            {
+                id: "demon-slayer",
+                names: { ru: "Клинок, рассекающий демонов" },
+                description: "Тандзиро Камадо становится убийцей демонов, чтобы спасти свою сестру Нэдзуко, которая превратилась в монстра, и отомстить за гибель своей семьи.",
+                posters: { medium: { url: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300" } },
+                player: {
+                    host: "",
+                    list: {
+                        "1": { name: "Жестокость • Серия 1", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 5] } },
+                        "2": { name: "Учитель Сакодзи • Серия 2", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [1, 3] } }
+                    }
+                }
+            },
+            {
+                id: "jujutsu-kaisen",
+                names: { ru: "Магическая битва" },
+                description: "Старшеклассник Юдзи Итадори проглатывает проклятый палец могущественного демона, чтобы спасти друзей, и становится сосудом для Двуликого Сукуны.",
+                posters: { medium: { url: "https://images.unsplash.com/photo-1627337376130-10906f2a704e?q=80&w=300" } },
+                player: {
+                    host: "",
+                    list: {
+                        "1": { name: "Двуликий суккуб • Серия 1", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 4] } }
+                    }
+                }
+            },
+            {
+                id: "attack-on-titan",
+                names: { ru: "Атака титанов" },
+                description: "Человечество живет за тремя огромными стенами, защищающими их от гигантских плотоядных монстров — титанов. Но мирная жизнь заканчивается в один день.",
+                posters: { medium: { url: "https://images.unsplash.com/photo-1541562232579-512a21360020?q=80&w=300" } },
+                player: {
+                    host: "",
+                    list: {
+                        "1": { name: "К тебе, спустя 2000 лет • Серия 1", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [3, 5] } }
+                    }
+                }
             }
-        }
-    },
-    {
-        id: "demon-slayer",
-        names: { ru: "Клинок, рассекающий демонов" },
-        description: "Тандзиро Камадо становится убийцей демонов, чтобы спасти свою сестру Нэдзуко, которая превратилась в монстра, и отомстить за гибель своей семьи.",
-        posters: { medium: { url: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300" } },
-        player: {
-            host: "",
-            list: {
-                "1": { name: "Жестокость • Серия 1", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 5] } },
-                "2": { name: "Учитель Сакодзи • Серия 2", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [1, 3] } }
-            }
-        }
-    },
-    {
-        id: "jujutsu-kaisen",
-        names: { ru: "Магическая битва" },
-        description: "Старшеклассник Юдзи Итадори проглатывает проклятый палец могущественного демона, чтобы спасти друзей, и становится сосудом для Двуликого Сукуны.",
-        posters: { medium: { url: "https://via.placeholder.com/130x180?text=Jujutsu+Kaisen" } },
-        player: {
-            host: "",
-            list: {
-                "1": { name: "Двуликий суккуб • Серия 1", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 4] } }
-            }
-        }
-    },
-    {
-        id: "attack-on-titan",
-        names: { ru: "Атака титанов" },
-        description: "Человечество живет за тремя огромными стенами, защищающими их от гигантских плотоядных монстров — титанов. Но мирная жизнь заканчивается в один день.",
-        posters: { medium: { url: "https://via.placeholder.com/130x180?text=Attack+on+Titan" } },
-        player: {
-            host: "",
-            list: {
-                "1": { name: "К тебе, спустя 2000 лет • Серия 1", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [3, 5] } }
-            }
-        }
-    }
-];
+        ];
 
-// ССЫЛКА НА ВЕРСЕЛЬ СЕРВЕР
-const VERCEL_SERVER_URL = "https://nonaxamine-pidoraska228.vercel.app";
+        // ССЫЛКА НА ВЕРСЕЛЬ СЕРВЕР
+        const VERCEL_SERVER_URL = "https://nonaxamine-pidoraska228.vercel.app";
 
-// Элементы страницы
-const player = document.getElementById('nonax-player');
-const skipBtn = document.getElementById('nonax-skip-btn');
-const searchInput = document.getElementById('search-input');
-const searchBtn = document.getElementById('search-btn');
-
-const resultsDropdown = document.getElementById('results-dropdown');
-const resultsGrid = document.getElementById('results-grid');
-
-const animePoster = document.getElementById('anime-poster');
-const animeTitleDisplay = document.getElementById('anime-title-display');
-const episodeSubtitleDisplay = document.getElementById('episode-subtitle-display');
-const episodesContainer = document.getElementById('episode-list-container');
-const animeDescription = document.getElementById('anime-description');
-
-// Элементы главной страницы
-const catalogGridEl = document.getElementById('catalog-grid-el');
-const heroBannerEl = document.getElementById('hero-banner-el');
-const heroTitle = document.getElementById('hero-title');
-const heroDesc = document.getElementById('hero-desc');
-const heroPlayBtn = document.getElementById('hero-play-btn');
-
-// Состояние приложения
-let currentAnimeData = null;
-let currentEpisodeKey = null;
-let hlsInstance = null;
-
-// Поиск по клику и по нажатию Enter
-searchBtn.addEventListener('click', performSearch);
-searchInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') performSearch();
-});
-
-// Навигация между страницами
-function showPage(pageId) {
-    document.querySelectorAll('.nx-page').forEach(page => {
-        if (page.id === pageId) page.style.display = 'block';
-        else page.style.display = 'none';
-    });
-    if (pageId !== 'watch-page' && player) {
-        player.pause();
-    }
-}
-
-// Инициализация главной страницы (карточки тайтлов)
-function initCatalog() {
-    catalogGridEl.innerHTML = '';
-    localDatabase.forEach(anime => {
-        const card = document.createElement('div');
-        card.className = 'nx-release-card';
-        card.innerHTML = `
-            <div class="nx-card-image-box">
-                <span class="nx-card-rating">${anime.rating || "9.0"}</span>
-                <span class="nx-card-year">${anime.year || "2023"}</span>
-                <img src="${anime.posters.medium.url}" alt="${anime.names.ru}">
-            </div>
-            <div class="nx-card-info">
-                <h4 class="nx-card-title">${anime.names.ru}</h4>
-                <p class="nx-card-episodes">Все серии в HD</p>
-            </div>
-        `;
-        card.addEventListener('click', () => {
-            loadAnime(anime);
-            showPage('watch-page');
-        });
-        catalogGridEl.appendChild(card);
-    });
-
-    const heroAnime = localDatabase[0];
-    heroTitle.innerText = heroAnime.names.ru;
-    heroDesc.innerText = heroAnime.description;
-    if (heroAnime.heroBackground) {
-        heroBannerEl.style.backgroundImage = `url('${heroAnime.heroBackground}')`;
-    }
-    heroPlayBtn.onclick = () => {
-        loadAnime(heroAnime);
-        showPage('watch-page');
-    };
-}
-
-// Усовершенствованный поиск с 3-секундным таймаутом отсечки
-async function performSearch() {
-    const query = searchInput.value.trim();
-    if (!query) return;
-
-    resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Поиск аниме в базе...</p>';
-    resultsDropdown.style.display = 'block';
-
-    const serverUrl = `${VERCEL_SERVER_URL}/api/search?q=${encodeURIComponent(query)}`;
-
-    // Настраиваем прерыватель запроса на 3 секунды
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-    try {
-        console.log("Запрос к собственному серверу Vercel...");
-        const response = await fetch(serverUrl, { signal: controller.signal });
-        clearTimeout(timeoutId); // Отменяем таймер, если сервер ответил вовремя
-
-        if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
-
-        const data = await response.json();
-        const list = Array.isArray(data) ? data : (data.list || []);
+        // Элементы страницы
+        const player = document.getElementById('nonax-player');
+        const skipBtn = document.getElementById('nonax-skip-btn');
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
         
-        displaySearchResults(list);
-    } catch (err) {
-        clearTimeout(timeoutId); // Отменяем таймер при любой ошибке
-        console.warn("Сбой бэкенда Vercel или таймаут ожидания. Запускаем локальный поиск...", err);
+        const resultsDropdown = document.getElementById('results-dropdown');
+        const resultsGrid = document.getElementById('results-grid');
         
-        // Мгновенный резервный поиск по нашей локальной базе данных
-        const localResults = localDatabase.filter(anime => 
-            anime.names.ru.toLowerCase().includes(query.toLowerCase()) || 
-            anime.description.toLowerCase().includes(query.toLowerCase())
-        );
-        displaySearchResults(localResults);
-    }
-}
+        const animePoster = document.getElementById('anime-poster');
+        const animeTitleDisplay = document.getElementById('anime-title-display');
+        const episodeSubtitleDisplay = document.getElementById('episode-subtitle-display');
+        const episodesContainer = document.getElementById('episode-list-container');
+        const animeDescription = document.getElementById('anime-description');
 
-// Вывод результатов поиска
-function displaySearchResults(animeList) {
-    resultsGrid.innerHTML = '';
-    if (animeList.length === 0) {
-        resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Ничего не найдено.</p>';
-        resultsDropdown.style.display = 'block';
-        return;
-    }
+        // Элементы главной страницы
+        const catalogGridEl = document.getElementById('catalog-grid-el');
+        const heroBannerEl = document.getElementById('hero-banner-el');
+        const heroTitle = document.getElementById('hero-title');
+        const heroDesc = document.getElementById('hero-desc');
+        const heroPlayBtn = document.getElementById('hero-play-btn');
 
-    animeList.forEach(anime => {
-        const card = document.createElement('div');
-        card.className = 'nx-anime-card';
-        
-        let posterPath = anime.posters && anime.posters.medium ? anime.posters.medium.url : '';
-        const posterUrl = posterPath.startsWith('http') ? posterPath : `https://anilibria.top${posterPath}`;
+        // Состояние приложения
+        let currentAnimeData = null;
+        let currentEpisodeKey = null;
+        let hlsInstance = null;
 
-        card.innerHTML = `
-            <img src="${posterUrl}" alt="${anime.names.ru}">
-            <div class="nx-anime-card-title">${anime.names.ru}</div>
-        `;
-
-        card.addEventListener('click', () => {
-            loadAnime(anime);
-            resultsDropdown.style.display = 'none';
-            showPage('watch-page');
+        // Поиск по клику и по нажатию Enter
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
         });
 
-        resultsGrid.appendChild(card);
-    });
+        // Навигация между страницами
+        function showPage(pageId) {
+            document.querySelectorAll('.nx-page').forEach(page => {
+                if (page.id === pageId) page.style.display = 'block';
+                else page.style.display = 'none';
+            });
+            if (pageId !== 'watch-page' && player) {
+                player.pause();
+            }
+        }
 
-    resultsDropdown.style.display = 'block';
-    resultsDropdown.scrollIntoView({ behavior: 'smooth' });
-}
+        // Инициализация главной страницы (карточки тайтлов)
+        function initCatalog() {
+            catalogGridEl.innerHTML = '';
+            localDatabase.forEach(anime => {
+                const card = document.createElement('div');
+                card.className = 'nx-release-card';
+                card.innerHTML = `
+                    <div class="nx-card-image-box">
+                        <span class="nx-card-rating">${anime.rating || "9.0"}</span>
+                        <span class="nx-card-year">${anime.year || "2023"}</span>
+                        <img src="${anime.posters.medium.url}" alt="${anime.names.ru}">
+                    </div>
+                    <div class="nx-card-info">
+                        <h4 class="nx-card-title">${anime.names.ru}</h4>
+                        <p class="nx-card-episodes">Все серии в HD</p>
+                    </div>
+                `;
+                card.addEventListener('click', () => {
+                    loadAnime(anime);
+                    showPage('watch-page');
+                });
+                catalogGridEl.appendChild(card);
+            });
 
-// Загрузка аниме и его данных
-function loadAnime(anime) {
-    currentAnimeData = anime;
-    animeTitleDisplay.innerText = anime.names.ru;
-    animeDescription.innerText = anime.description || "Описание временно отсутствует.";
-    animePoster.src = anime.posters.medium.url;
-
-    episodesContainer.innerHTML = '';
-    
-    if (!anime.player || !anime.player.list) {
-        episodesContainer.innerHTML = '<p style="color: var(--nx-text-secondary);">У этого релиза пока нет серий в плеере.</p>';
-        return;
-    }
-
-    const episodeKeys = Object.keys(anime.player.list);
-
-    episodeKeys.forEach(key => {
-        const btn = document.createElement('button');
-        btn.className = 'nx-episode-btn';
-        btn.innerText = key;
-        btn.addEventListener('click', () => loadEpisode(key));
-        episodesContainer.appendChild(btn);
-    });
-
-    if (episodeKeys.length > 0) {
-        loadEpisode(episodeKeys[0]);
-    }
-}
-
-// Запуск серии
-function loadEpisode(episodeKey) {
-    currentEpisodeKey = episodeKey;
-    const episode = currentAnimeData.player.list[episodeKey];
-    const videoHost = currentAnimeData.player.host || "cache.libria.fun";
-
-    document.querySelectorAll('.nx-episode-btn').forEach(btn => {
-        if (btn.innerText === episodeKey) btn.classList.add('active');
-        else btn.classList.remove('active');
-    });
-
-    episodeSubtitleDisplay.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
-
-    const hlsPath = episode.hls.fhd || episode.hls.hd || episode.hls.sd;
-    if (!hlsPath) {
-        alert("Не найден рабочий видеопоток для данной серии.");
-        return;
-    }
-
-    const finalVideoUrl = hlsPath.startsWith('http') ? hlsPath : `https://${videoHost}${hlsPath}`;
-    playHlsStream(finalVideoUrl);
-}
-
-// Старт HLS.js
-function playHlsStream(url) {
-    if (hlsInstance) {
-        hlsInstance.destroy();
-    }
-
-    if (url.endsWith('.mp4')) {
-        player.src = url;
-        player.play().catch(() => console.log("Браузер ожидает клика пользователя."));
-        skipBtn.style.display = 'none';
-        return;
-    }
-
-    if (Hls.isSupported()) {
-        hlsInstance = new Hls();
-        hlsInstance.loadSource(url);
-        hlsInstance.attachMedia(player);
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-            player.play().catch(() => console.log("Браузер ожидает клика пользователя."));
-        });
-    } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
-        player.src = url;
-        player.addEventListener('loadedmetadata', () => {
-            player.play().catch(() => console.log("Браузер ожидает клика пользователя."));
-        });
-    }
-
-    skipBtn.style.display = 'none';
-}
-
-// Слежение за таймкодами опенингов
-player.addEventListener('timeupdate', () => {
-    if (!currentAnimeData || !currentEpisodeKey) return;
-
-    const time = player.currentTime;
-    const episode = currentAnimeData.player.list[currentEpisodeKey];
-
-    if (episode.skips && episode.skips.opening && episode.skips.opening.length === 2) {
-        const start = episode.skips.opening[0];
-        const end = episode.skips.opening[1];
-
-        if (time >= start && time < end) {
-            skipBtn.style.display = 'block';
-            skipBtn.onclick = () => {
-                player.currentTime = end;
-                skipBtn.style.display = 'none';
+            const heroAnime = localDatabase[0];
+            heroTitle.innerText = heroAnime.names.ru;
+            heroDesc.innerText = heroAnime.description;
+            if (heroAnime.heroBackground) {
+                heroBannerEl.style.backgroundImage = `url('${heroAnime.heroBackground}')`;
+            }
+            heroPlayBtn.onclick = () => {
+                loadAnime(heroAnime);
+                showPage('watch-page');
             };
-        } else {
+        }
+
+        // Усовершенствованный поиск с 3-секундным таймаутом отсечки
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Поиск аниме в базе...</p>';
+            resultsDropdown.style.display = 'block';
+
+            const serverUrl = `${VERCEL_SERVER_URL}/api/search?q=${encodeURIComponent(query)}`;
+
+            // Настраиваем прерыватель запроса на 3 секунды
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+            try {
+                console.log("Запрос к собственному серверу Vercel...");
+                const response = await fetch(serverUrl, { signal: controller.signal });
+                clearTimeout(timeoutId); // Отменяем таймер, если сервер ответил вовремя
+
+                if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
+
+                const data = await response.json();
+                const list = Array.isArray(data) ? data : (data.list || []);
+                
+                displaySearchResults(list);
+            } catch (err) {
+                clearTimeout(timeoutId); // Отменяем таймер при любой ошибке
+                console.warn("Сбой бэкенда Vercel или таймаут ожидания. Запускаем локальный поиск...", err);
+                
+                // Мгновенный резервный поиск по нашей локальной базе данных
+                const localResults = localDatabase.filter(anime => 
+                    anime.names.ru.toLowerCase().includes(query.toLowerCase()) || 
+                    anime.description.toLowerCase().includes(query.toLowerCase())
+                );
+                displaySearchResults(localResults);
+            }
+        }
+
+        // Вывод результатов поиска
+        function displaySearchResults(animeList) {
+            resultsGrid.innerHTML = '';
+            if (animeList.length === 0) {
+                resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Ничего не найдено.</p>';
+                resultsDropdown.style.display = 'block';
+                return;
+            }
+
+            animeList.forEach(anime => {
+                const card = document.createElement('div');
+                card.className = 'nx-anime-card';
+                
+                let posterPath = anime.posters && anime.posters.medium ? anime.posters.medium.url : '';
+                const posterUrl = posterPath.startsWith('http') ? posterPath : `https://anilibria.top${posterPath}`;
+
+                card.innerHTML = `
+                    <img src="${posterUrl}" alt="${anime.names.ru}">
+                    <div class="nx-anime-card-title">${anime.names.ru}</div>
+                `;
+
+                card.addEventListener('click', () => {
+                    loadAnime(anime);
+                    resultsDropdown.style.display = 'none';
+                    showPage('watch-page');
+                });
+
+                resultsGrid.appendChild(card);
+            });
+
+            resultsDropdown.style.display = 'block';
+            resultsDropdown.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Загрузка аниме и его данных
+        function loadAnime(anime) {
+            currentAnimeData = anime;
+            animeTitleDisplay.innerText = anime.names.ru;
+            animeDescription.innerText = anime.description || "Описание временно отсутствует.";
+            animePoster.src = anime.posters.medium.url;
+
+            episodesContainer.innerHTML = '';
+            
+            if (!anime.player || !anime.player.list) {
+                episodesContainer.innerHTML = '<p style="color: var(--nx-text-secondary);">У этого релиза пока нет серий в плеере.</p>';
+                return;
+            }
+
+            const episodeKeys = Object.keys(anime.player.list);
+
+            episodeKeys.forEach(key => {
+                const btn = document.createElement('button');
+                btn.className = 'nx-episode-btn';
+                btn.innerText = key;
+                btn.addEventListener('click', () => loadEpisode(key));
+                episodesContainer.appendChild(btn);
+            });
+
+            if (episodeKeys.length > 0) {
+                loadEpisode(episodeKeys[0]);
+            }
+        }
+
+        // Запуск серии
+        function loadEpisode(episodeKey) {
+            currentEpisodeKey = episodeKey;
+            const episode = currentAnimeData.player.list[episodeKey];
+            const videoHost = currentAnimeData.player.host || "cache.libria.fun";
+
+            document.querySelectorAll('.nx-episode-btn').forEach(btn => {
+                if (btn.innerText === episodeKey) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            episodeSubtitleDisplay.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
+
+            const hlsPath = episode.hls.fhd || episode.hls.hd || episode.hls.sd;
+            if (!hlsPath) {
+                alert("Не найден рабочий видеопоток для данной серии.");
+                return;
+            }
+
+            const finalVideoUrl = hlsPath.startsWith('http') ? hlsPath : `https://${videoHost}${hlsPath}`;
+            playHlsStream(finalVideoUrl);
+        }
+
+        // Старт HLS.js
+        function playHlsStream(url) {
+            if (hlsInstance) {
+                hlsInstance.destroy();
+            }
+
+            if (url.endsWith('.mp4')) {
+                player.src = url;
+                player.play().catch(() => console.log("Браузер ожидает клика пользователя."));
+                skipBtn.style.display = 'none';
+                return;
+            }
+
+            if (Hls.isSupported()) {
+                hlsInstance = new Hls();
+                hlsInstance.loadSource(url);
+                hlsInstance.attachMedia(player);
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                    player.play().catch(() => console.log("Браузер ожидает клика пользователя."));
+                });
+            } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
+                player.src = url;
+                player.addEventListener('loadedmetadata', () => {
+                    player.play().catch(() => console.log("Браузер ожидает клика пользователя."));
+                });
+            }
+
             skipBtn.style.display = 'none';
         }
-    } else {
-        skipBtn.style.display = 'none';
-    }
-});
 
-// Запуск каталога при старте страницы
-initCatalog();
+        // Слежение за таймкодами опенингов
+        player.addEventListener('timeupdate', () => {
+            if (!currentAnimeData || !currentEpisodeKey) return;
+
+            const time = player.currentTime;
+            const episode = currentAnimeData.player.list[currentEpisodeKey];
+
+            if (episode.skips && episode.skips.opening && episode.skips.opening.length === 2) {
+                const start = episode.skips.opening[0];
+                const end = episode.skips.opening[1];
+
+                if (time >= start && time < end) {
+                    skipBtn.style.display = 'block';
+                    skipBtn.onclick = () => {
+                        player.currentTime = end;
+                        skipBtn.style.display = 'none';
+                    };
+                } else {
+                    skipBtn.style.display = 'none';
+                }
+            } else {
+                skipBtn.style.display = 'none';
+            }
+        });
+
+        // Запуск каталога при старте страницы
+        initCatalog();
     </script>
 </body>
 </html>

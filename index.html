@@ -705,7 +705,7 @@ async function performSearch() {
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
-        console.log("Запрос к собственному server Vercel...");
+        console.log("Запрос к собственному серверу Vercel...");
         const response = await fetch(serverUrl, { signal: controller.signal });
         clearTimeout(timeoutId); // Отменяем таймер, если сервер ответил вовремя
 
@@ -850,7 +850,7 @@ function renderEpisodes(episodesList) {
             episodesList.forEach(ep => {
                 formattedList[ep.ordinal] = {
                     name: ep.name || `Серия ${ep.ordinal}`,
-                    hls: ep.hls || ep.video || {},
+                    hls: ep.hls || ep.video || ep.sources || {}, // Ищем hls, video или sources
                     skips: ep.skips || {}
                 };
             });
@@ -881,6 +881,25 @@ function renderEpisodes(episodesList) {
     }
 }
 
+// Глубокий рекурсивный поиск видеопотока внутри объекта серии (решает любые изменения структуры API!)
+function findHlsPath(obj) {
+    if (!obj || typeof obj !== 'object') return null;
+    
+    // Если нашли HLS-объект с ключами качества видео
+    if (obj.fhd || obj.hd || obj.sd) {
+        return obj.fhd || obj.hd || obj.sd;
+    }
+    
+    // Перебираем все внутренние свойства объекта рекурсивно
+    for (let key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            const result = findHlsPath(obj[key]);
+            if (result) return result;
+        }
+    }
+    return null;
+}
+
 // Запуск конкретной серии
 function loadEpisode(episodeKey, episodesList) {
     if (!episodesList || !episodeKey) return;
@@ -900,21 +919,15 @@ function loadEpisode(episodeKey, episodesList) {
         subTitleEl.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
     }
 
-    // Находим HLS поток (.m3u8) в структуре API v1
-    let hlsPath = "";
-    try {
-        if (episode.hls) {
-            hlsPath = episode.hls.fhd || episode.hls.hd || episode.hls.sd;
-        } else if (episode.video) {
-            hlsPath = episode.video.fhd || episode.video.hd || episode.video.sd;
-        }
-    } catch(e) { console.error("Ошибка поиска потока", e); }
+    // Запускаем рекурсивный автопоиск HLS-потока внутри объекта серии
+    let hlsPath = findHlsPath(episode);
 
     if (!hlsPath) {
         alert("Не найден рабочий видеопоток для данной серии.");
         return;
     }
 
+    // Собираем финальную ссылку на видео
     const finalVideoUrl = hlsPath.startsWith('http') ? hlsPath : `https://${videoHost}${hlsPath}`;
     playHlsStream(finalVideoUrl);
 }

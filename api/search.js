@@ -1,38 +1,46 @@
+const https = require('https');
+
 module.exports = async (req, res) => {
-    // Включаем CORS-заголовки, чтобы ваш фронтенд на GitHub Pages мог делать сюда запросы
+    // CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Если это предзапрос CORS
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
 
-    // Получаем поисковое слово из параметров
     const query = req.query.q;
     if (!query) {
         return res.status(400).json({ error: 'Поисковый запрос пуст' });
     }
 
-    // Официальный рабочий домен API Анилибрии
     const targetUrl = `https://api.anilibria.tv/v3/title/search?search=${encodeURIComponent(query)}`;
 
+    // Безопасный запрос через встроенный модуль https (совместимый со всеми версиями Node.js)
     try {
-        console.log(`Запрос к Анилибрии для: "${query}"`);
-        
-        const response = await fetch(targetUrl);
-        if (!response.ok) {
-            throw new Error(`Анилибрия ответила со статусом: ${response.status}`);
-        }
+        https.get(targetUrl, (response) => {
+            let data = '';
 
-        const data = await response.json();
-        return res.status(200).json(data);
-    } catch (error) {
-        console.error('Ошибка на сервере:', error);
-        return res.status(500).json({ 
-            error: 'Ошибка сервера при поиске аниме', 
-            details: error.message 
+            // Собираем кусочки данных
+            response.on('data', (chunk) => {
+                data += chunk;
+            });
+
+            // Когда все данные получены
+            response.on('end', () => {
+                try {
+                    const parsedData = JSON.parse(data);
+                    return res.status(200).json(parsedData);
+                } catch (parseError) {
+                    return res.status(500).json({ error: 'Ошибка парсинга ответа от Анилибрии', details: parseError.message });
+                }
+            });
+
+        }).on("error", (err) => {
+            return res.status(500).json({ error: 'Ошибка сетевого запроса к Анилибрии', details: err.message });
         });
+    } catch (error) {
+        return res.status(500).json({ error: 'Критическая ошибка сервера', details: error.message });
     }
 };

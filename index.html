@@ -707,7 +707,7 @@ async function performSearch() {
 
     // Настраиваем прерыватель запроса на 3 секунды
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 100000000);
 
     try {
         console.log("Запрос к собственному серверу Vercel...");

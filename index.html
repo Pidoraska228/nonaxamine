@@ -601,6 +601,14 @@ const skipBtn = document.getElementById('nonax-skip-btn');
 const searchInput = document.getElementById('search-input');
 const searchBtn = document.getElementById('search-btn');
 
+// ЭЛЕМЕНТЫ СТРАНИЦЫ ПРОСМОТРА (ВОТ ЭТИ ПРОПУЩЕННЫЕ СТРОКИ МЫ ВЕРНУЛИ)
+const animePoster = document.getElementById('anime-poster');
+const animeTitleDisplay = document.getElementById('anime-title-display');
+const episodeSubtitleDisplay = document.getElementById('episode-subtitle-display');
+const episodesContainer = document.getElementById('episode-list-container');
+const animeDescription = document.getElementById('anime-description');
+
+// Объявляем через let, чтобы скрипт мог сам создать их в случае отсутствия
 let resultsDropdown = document.getElementById('results-dropdown');
 let resultsGrid = document.getElementById('results-grid');
 
@@ -689,7 +697,7 @@ function initCatalog() {
     };
 }
 
-// Поиск аниме
+// Усовершенствованный поиск с 10-секундным таймаутом отсечки
 async function performSearch() {
     const query = searchInput.value.trim();
     if (!query) return;
@@ -706,7 +714,7 @@ async function performSearch() {
     try {
         console.log("Запрос к собственному серверу Vercel...");
         const response = await fetch(serverUrl, { signal: controller.signal });
-        clearTimeout(timeoutId); // Отменяем таймер
+        clearTimeout(timeoutId); // Отменяем таймер, если сервер ответил вовремя
 
         if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
 
@@ -720,7 +728,7 @@ async function performSearch() {
         clearTimeout(timeoutId); // Отменяем таймер при любой ошибке
         console.warn("Сбой бэкенда Vercel или таймаут ожидания. Запускаем локальный поиск...", err);
         
-        // Резервный поиск по нашей локальной базе данных
+        // Мгновенный резервный поиск по нашей локальной базе данных
         const localResults = localDatabase.filter(anime => 
             anime.name.toLowerCase().includes(query.toLowerCase()) || 
             anime.description.toLowerCase().includes(query.toLowerCase())
@@ -729,7 +737,7 @@ async function performSearch() {
     }
 }
 
-// Вывод результатов поиска
+// Вывод результатов поиска (адаптировано под API v1)
 function displaySearchResults(animeList) {
     resultsGrid.innerHTML = '';
     if (animeList.length === 0) {
@@ -775,7 +783,7 @@ function displaySearchResults(animeList) {
     resultsDropdown.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Загрузка аниме и его данных (Полностью неуязвимый метод)
+// Загрузка аниме и его данных (Абсолютно защищенный метод)
 async function loadAnime(anime) {
     if (!anime) return;
     currentAnimeData = anime;

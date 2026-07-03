@@ -15,8 +15,8 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Поисковый запрос пуст' });
     }
 
-    // ОФИЦИАЛЬНОЕ ЗЕРКАЛО БЕЗ CLOUDFLARE ДЛЯ РФ И СНГ
-    const targetUrl = `https://api.api-anilibria.ru/v3/title/search?search=${encodeURIComponent(query)}`;
+    // ОФИЦИАЛЬНОЕ ЖИВОЕ API V1 НА ДОМЕНЕ ANILIBERTY.TOP (БЕЗ CLOUDFLARE БЛОКИРОВОК)
+    const targetUrl = `https://aniliberty.top/api/v1/anime/releases?search=${encodeURIComponent(query)}`;
 
     const options = {
         headers: {
@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
     };
 
     try {
-        console.log(`Запрос к официальному зеркалу Анилибрии без Cloudflare для: "${query}"`);
+        console.log(`Запрос к новому API v1 для: "${query}"`);
         
         https.get(targetUrl, options, (response) => {
             let data = '';
@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
                     return res.status(200).json(parsedData);
                 } catch (parseError) {
                     return res.status(500).json({ 
-                        error: 'Ошибка парсинга ответа от зеркала', 
+                        error: 'Ошибка парсинга ответа от API v1', 
                         details: parseError.message,
                         rawData: data.substring(0, 300)
                     });
@@ -49,7 +49,7 @@ module.exports = async (req, res) => {
             });
 
         }).on("error", (err) => {
-            return res.status(500).json({ error: 'Ошибка сети при обращении к зеркалу', details: err.message });
+            return res.status(500).json({ error: 'Ошибка сети при обращении к API v1', details: err.message });
         });
     } catch (error) {
         return res.status(500).json({ error: 'Критическая ошибка сервера', details: error.message });

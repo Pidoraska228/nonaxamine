@@ -11,12 +11,18 @@ module.exports = async (req, res) => {
     }
 
     const query = req.query.q;
-    if (!query) {
-        return res.status(400).json({ error: 'Поисковый запрос пуст' });
-    }
+    const id = req.query.id;
 
-    // ИСПОЛЬЗУЕМ ТОЧНЫЙ ЭНДПОИНТ API V1 НА ДОМЕНЕ ANILIBERTY.TOP (С ДОБАВЛЕНИЕМ CATALOG)
-    const targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases?search=${encodeURIComponent(query)}`;
+    let targetUrl = '';
+    if (id) {
+        // Эндпоинт для получения серий конкретного аниме в API v1
+        targetUrl = `https://aniliberty.top/api/v1/anime/releases/${id}/episodes`;
+    } else if (query) {
+        // Эндпоинт для поиска аниме в API v1
+        targetUrl = `https://aniliberty.top/api/v1/anime/releases?search=${encodeURIComponent(query)}`;
+    } else {
+        return res.status(400).json({ error: 'Параметры q или id отсутствуют' });
+    }
 
     const options = {
         headers: {
@@ -26,7 +32,7 @@ module.exports = async (req, res) => {
     };
 
     try {
-        console.log(`Запрос к новому API v1 для: "${query}"`);
+        console.log(`Запрос к API v1: ${targetUrl}`);
         
         https.get(targetUrl, options, (response) => {
             let data = '';

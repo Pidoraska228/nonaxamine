@@ -15,8 +15,8 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Поисковый запрос пуст' });
     }
 
-    // ОФИЦИАЛЬНОЕ ЖИВОЕ API V1 НА ДОМЕНЕ ANILIBERTY.TOP (БЕЗ CLOUDFLARE БЛОКИРОВОК)
-    const targetUrl = `https://aniliberty.top/api/v1/anime/releases?search=${encodeURIComponent(query)}`;
+    // ИСПОЛЬЗУЕМ ТОЧНЫЙ ЭНДПОИНТ API V1 НА ДОМЕНЕ ANILIBERTY.TOP (С ДОБАВЛЕНИЕМ CATALOG)
+    const targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases?search=${encodeURIComponent(query)}`;
 
     const options = {
         headers: {
@@ -40,11 +40,7 @@ module.exports = async (req, res) => {
                     const parsedData = JSON.parse(data);
                     return res.status(200).json(parsedData);
                 } catch (parseError) {
-                    return res.status(500).json({ 
-                        error: 'Ошибка парсинга ответа от API v1', 
-                        details: parseError.message,
-                        rawData: data.substring(0, 300)
-                    });
+                    return res.status(500).json({ error: 'Ошибка парсинга ответа от API v1', details: parseError.message });
                 }
             });
 

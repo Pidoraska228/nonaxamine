@@ -17,20 +17,14 @@ module.exports = async (req, res) => {
 
     // Рабочий эндпоинт API v1 Анилибрии на домене aniliberty.top
     const targetUrl = `https://aniliberty.top/api/v1/anime/releases?search=${encodeURIComponent(query)}`;
-
-    // Имитируем реальный браузер Google Chrome на Windows, чтобы Cloudflare не блокировал нас
-    const options = {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json',
-            'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
-        }
-    };
+    
+    // Используем контейнер AllOrigins на бэкенде Vercel для полного обхода блокировок IP Amazon/Vercel
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
     try {
-        console.log(`Запрос к API v1 с имитацией браузера для: "${query}"`);
+        console.log(`Сервер запускает двойной обход через AllOrigins для: "${query}"`);
         
-        https.get(targetUrl, options, (response) => {
+        https.get(proxyUrl, (response) => {
             let data = '';
 
             response.on('data', (chunk) => {
@@ -39,19 +33,25 @@ module.exports = async (req, res) => {
 
             response.on('end', () => {
                 try {
-                    const parsedData = JSON.parse(data);
+                    const wrapper = JSON.parse(data);
+                    if (!wrapper.contents) {
+                        return res.status(500).json({ error: 'Прокси вернул пустой контейнер' });
+                    }
+                    
+                    // Распаковываем ответ базы из контейнера AllOrigins
+                    const parsedData = JSON.parse(wrapper.contents);
                     return res.status(200).json(parsedData);
                 } catch (parseError) {
                     return res.status(500).json({ 
                         error: 'Ошибка парсинга ответа от API v1', 
                         details: parseError.message,
-                        rawData: data.substring(0, 300) // выведем начало ответа для диагностики в случае сбоя
+                        rawData: data.substring(0, 300)
                     });
                 }
             });
 
         }).on("error", (err) => {
-            return res.status(500).json({ error: 'Ошибка сети при обращении к API v1', details: err.message });
+            return res.status(500).json({ error: 'Ошибка сети при обращении к прокси', details: err.message });
         });
     } catch (error) {
         return res.status(500).json({ error: 'Критическая ошибка сервера', details: error.message });

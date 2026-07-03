@@ -534,7 +534,7 @@
 
     <!-- ВЕСЬ СЛОЖНЫЙ JS-КОД ВСТРОЕН НАПРЯМУЮ СЮДА — ЭТО ГАРАНТИРУЕТ ОДНОВРЕМЕННОЕ СТИРАНИЕ КЭША -->
     <script>
-        // ЛОКАЛЬНАЯ БАЗА ДАННЫХ АНИМЕ (Для офлайн/резервного режима)
+// ЛОКАЛЬНАЯ БАЗА ДАННЫХ АНИМЕ (Для офлайн/резервного режима)
 const localDatabase = [
     {
         id: "naruto",
@@ -729,7 +729,7 @@ async function performSearch() {
     }
 }
 
-// Вывод результатов поиска
+// Вывод результатов поиска (адаптировано под API v1)
 function displaySearchResults(animeList) {
     resultsGrid.innerHTML = '';
     if (animeList.length === 0) {
@@ -773,26 +773,36 @@ function displaySearchResults(animeList) {
     resultsDropdown.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Загрузка аниме и его данных (Динамическое стягивание серий через бэкенд)
+// Загрузка аниме и его данных (Абсолютно защищенный метод)
 async function loadAnime(anime) {
     currentAnimeData = anime;
     
-    const animeName = (anime.name && anime.name.main) || anime.name || "Аниме";
-    animeTitleDisplay.innerText = animeName;
-    animeDescription.innerText = anime.description || "Описание сюжета временно отсутствует.";
+    // Защищенный парсинг названия
+    let animeName = "Аниме";
+    try {
+        animeName = (anime.name && anime.name.main) || anime.name || "Аниме";
+    } catch(e) { console.warn("Ошибка парсинга имени", e); }
     
-    // Загрузка постера
-    let posterUrl = "https://via.placeholder.com/130x180?text=Anime";
-    if (anime.poster && anime.poster.preview) {
-        posterUrl = `https://aniliberty.top${anime.poster.preview}`;
-    } else if (anime.optimized && anime.optimized.src) {
-        posterUrl = `https://aniliberty.top${anime.optimized.src}`;
-    } else if (anime.posters && anime.posters.medium) {
-        posterUrl = `https://aniliberty.top${anime.posters.medium.url}`;
-    }
-    animePoster.src = posterUrl;
+    if (animeTitleDisplay) animeTitleDisplay.innerText = animeName;
+    if (animeDescription) animeDescription.innerText = anime.description || "Описание сюжета временно отсутствует.";
+    
+    // Защищенная загрузка постера
+    let posterUrl = "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&width=300";
+    try {
+        if (anime.poster && anime.poster.preview) {
+            posterUrl = `https://aniliberty.top${anime.poster.preview}`;
+        } else if (anime.optimized && anime.optimized.src) {
+            posterUrl = `https://aniliberty.top${anime.optimized.src}`;
+        } else if (anime.posters && anime.posters.medium) {
+            posterUrl = `https://aniliberty.top${anime.posters.medium.url}`;
+        }
+    } catch(e) { console.warn("Ошибка загрузки постера", e); }
+    
+    if (animePoster) animePoster.src = posterUrl;
 
-    episodesContainer.innerHTML = '<p style="color: var(--nx-text-secondary); text-align: center; grid-column: span 10;">Загружаем серии через сервер...</p>';
+    if (episodesContainer) {
+        episodesContainer.innerHTML = '<p style="color: var(--nx-text-secondary); text-align: center; grid-column: span 10;">Загружаем серии через сервер...</p>';
+    }
     
     // Если это локальное демо-аниме, серии уже есть в объекте
     if (anime.player && anime.player.list) {
@@ -813,28 +823,33 @@ async function loadAnime(anime) {
         renderEpisodes(episodesList);
     } catch (err) {
         console.error("Не удалось загрузить серии через Vercel:", err);
-        episodesContainer.innerHTML = '<p style="color: var(--nx-accent-red); text-align: center; grid-column: span 10;">Не удалось загрузить серии для данного релиза.</p>';
+        if (episodesContainer) {
+            episodesContainer.innerHTML = '<p style="color: var(--nx-accent-red); text-align: center; grid-column: span 10;">Не удалось загрузить серии для данного релиза.</p>';
+        }
     }
 }
 
-// Функция рендеринга кнопок серий в сетку
+// Защищенная функция рендеринга кнопок серий в сетку
 function renderEpisodes(episodesList) {
+    if (!episodesContainer) return;
     episodesContainer.innerHTML = '';
     
     // Преобразуем массив серий в удобную структуру, если пришел массив (API v1)
     let formattedList = {};
-    if (Array.isArray(episodesList)) {
-        episodesList.forEach(ep => {
-            // В API v1 номер серии лежит в ep.ordinal
-            formattedList[ep.ordinal] = {
-                name: ep.name || `Серия ${ep.ordinal}`,
-                hls: ep.hls || ep.video || {},
-                skips: ep.skips || {}
-            };
-        });
-    } else {
-        formattedList = episodesList; // Если пришел объект (старый формат/локальный)
-    }
+    try {
+        if (Array.isArray(episodesList)) {
+            episodesList.forEach(ep => {
+                // В API v1 номер серии лежит в ep.ordinal
+                formattedList[ep.ordinal] = {
+                    name: ep.name || `Серия ${ep.ordinal}`,
+                    hls: ep.hls || ep.video || {},
+                    skips: ep.skips || {}
+                };
+            });
+        } else {
+            formattedList = episodesList; // Если пришел объект (старый формат/локальный)
+        }
+    } catch(e) { console.error("Ошибка форматирования списка серий:", e); }
 
     const episodeKeys = Object.keys(formattedList);
     if (episodeKeys.length === 0) {
@@ -856,33 +871,36 @@ function renderEpisodes(episodesList) {
 
 // Запуск конкретной серии
 function loadEpisode(episodeKey, episodesList) {
-    currentEpisodeKey = episodeKey;
     const episode = episodesList[episodeKey];
+    if (!episode) return;
     
-    // В видеопотоках AniLiberty хостинг по умолчанию — cache.libria.fun
-    const videoHost = "cache.libria.fun";
+    currentEpisodeKey = episodeKey;
+    const videoHost = (currentAnimeData && currentAnimeData.player && currentAnimeData.player.host) || "cache.libria.fun";
 
     document.querySelectorAll('.nx-episode-btn').forEach(btn => {
         if (btn.innerText === episodeKey) btn.classList.add('active');
         else btn.classList.remove('active');
     });
 
-    episodeSubtitleDisplay.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
+    if (episodeSubtitleDisplay) {
+        episodeSubtitleDisplay.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
+    }
 
     // Находим HLS поток (.m3u8) в структуре API v1
     let hlsPath = "";
-    if (episode.hls) {
-        hlsPath = episode.hls.fhd || episode.hls.hd || episode.hls.sd;
-    } else if (episode.video) {
-        hlsPath = episode.video.fhd || episode.video.hd || episode.video.sd;
-    }
+    try {
+        if (episode.hls) {
+            hlsPath = episode.hls.fhd || episode.hls.hd || episode.hls.sd;
+        } else if (episode.video) {
+            hlsPath = episode.video.fhd || episode.video.hd || episode.video.sd;
+        }
+    } catch(e) { console.error("Ошибка поиска потока", e); }
 
     if (!hlsPath) {
         alert("Не найден рабочий видеопоток для данной серии.");
         return;
     }
 
-    // Собираем ссылку на видео. Если ссылка уже содержит http — используем её напрямую
     const finalVideoUrl = hlsPath.startsWith('http') ? hlsPath : `https://${videoHost}${hlsPath}`;
     playHlsStream(finalVideoUrl);
 }
@@ -924,17 +942,14 @@ player.addEventListener('timeupdate', () => {
     const time = player.currentTime;
     
     let episodesList = {};
-    if (currentAnimeData.player && currentAnimeData.player.list) {
-        episodesList = currentAnimeData.player.list;
-    } else if (currentAnimeData.episodes) {
-        // Если серии пришли динамически с сервера
-        episodesList = currentAnimeData.episodes; 
-    }
+    try {
+        if (currentAnimeData.player && currentAnimeData.player.list) {
+            episodesList = currentAnimeData.player.list;
+        } else if (currentAnimeData.episodes) {
+            episodesList = currentAnimeData.episodes; 
+        }
+    } catch(e) {}
     
-    // Если серии были отрендерены через массив (API v1), вытаскиваем из DOM структуры
-    const activeEpisodeBtn = document.querySelector('.nx-episode-btn.active');
-    if (!activeEpisodeBtn) return;
-
     // Временный костыль для таймкодов в демо-режиме (опенинг с 2 по 5 секунды)
     if (time >= 2 && time < 5) {
         skipBtn.style.display = 'block';

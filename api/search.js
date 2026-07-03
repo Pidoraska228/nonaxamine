@@ -15,7 +15,7 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Поисковый запрос пуст' });
     }
 
-    // ОФИЦИАЛЬНОЕ ЗЕРКАЛО БЕЗ CLOUDFLARE
+    // ОФИЦИАЛЬНОЕ ЗЕРКАЛО БЕЗ CLOUDFLARE ДЛЯ РФ И СНГ
     const targetUrl = `https://api.api-anilibria.ru/v3/title/search?search=${encodeURIComponent(query)}`;
 
     const options = {

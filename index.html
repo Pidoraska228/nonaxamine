@@ -432,7 +432,7 @@
             background-color: var(--nx-accent-red);
             border-color: var(--nx-accent-red);
             color: #fff;
-            box-shadow: 0 4px 12px rgba(255, 51, 51, 0.3);
+            box-shadow: 0 4px 12px rgba(255, 51, 51, 0.35);
         }
 
         .nx-anime-info-text {
@@ -586,9 +586,7 @@
             }
         ];
 
-        // ==========================================================
-        // НАСТРОЙКА АДРЕСА ВАШЕГО СЕРВЕРА НА VERCEL
-        // ==========================================================
+        // ССЫЛКА НА ВЕРСЕЛЬ СЕРВЕР (УЖЕ НАСТРОЕНА ПОД ВАШ АККАУНТ)
         const VERCEL_SERVER_URL = "https://nonaxamine-pidoraska228.vercel.app";
 
         // Элементы страницы
@@ -747,11 +745,8 @@
             currentAnimeData = anime;
             animeTitleDisplay.innerText = anime.names.ru;
             animeDescription.innerText = anime.description || "Описание временно отсутствует.";
-            
-            let posterPath = anime.posters && anime.posters.medium ? anime.posters.medium.url : '';
-            animePoster.src = posterPath.startsWith('http') ? posterPath : `https://anilibria.top${posterPath}`;
+            animePoster.src = anime.posters.medium.url;
 
-            // Генерация списка серий
             episodesContainer.innerHTML = '';
             
             if (!anime.player || !anime.player.list) {
@@ -785,7 +780,7 @@
                 else btn.classList.remove('active');
             });
 
-            episodeSubtitleDisplay.innerText = `Серия ${episodeKey} • ${episode.name || 'Эпизод воспроизводится'}`;
+            episodeSubtitleDisplay.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
 
             const hlsPath = episode.hls.fhd || episode.hls.hd || episode.hls.sd;
             if (!hlsPath) {

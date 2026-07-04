@@ -15,11 +15,11 @@ module.exports = async (req, res) => {
 
     let targetUrl = '';
     if (id) {
-        // ОФИЦИАЛЬНЫЙ ЭНДПОИНТ ДЛЯ ПОЛУЧЕНИЯ ДЕТАЛЕЙ РЕЛИЗА (СОДЕРЖИТ ВСЕ СЕРИИ ВНУТРИ)
-        targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases/${id}`;
+        // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ДЕТАЛЕЙ И СЕРИЙ АНИМЕ В API V1 (БЕЗ RELEASES И CATALOG)
+        targetUrl = `https://aniliberty.top/api/v1/anime/${id}`;
     } else if (query) {
-        // КОРРЕКТНЫЙ ЭНДПОИНТ ДЛЯ ПОИСКА АНИМЕ В API V1 (С ДОБАВЛЕНИЕМ CATALOG)
-        targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases?search=${encodeURIComponent(query)}`;
+        // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ПОИСКА АНИМЕ В API V1 (БЕЗ CATALOG)
+        targetUrl = `https://aniliberty.top/api/v1/anime/search?q=${encodeURIComponent(query)}`;
     } else {
         return res.status(400).json({ error: 'Параметры q или id отсутствуют' });
     }
@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
     };
 
     try {
-        console.log(`Запрос к API v1: ${targetUrl}`);
+        console.log(`Запрос к каноничному API v1: ${targetUrl}`);
         
         https.get(targetUrl, options, (response) => {
             let data = '';

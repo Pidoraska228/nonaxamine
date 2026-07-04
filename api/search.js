@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
     let targetUrl = '';
     if (id) {
         // Эндпоинт v3 для деталей релиза на зеркале без Cloudflare
-        targetUrl = `https://api-anilibria.ru/v3/title?id=${id}`;
+        targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases/${id}`;
     } else if (query) {
         // Эндпоинт v3 для поиска релизов на зеркале без Cloudflare
         targetUrl = `https://api-anilibria.ru/v3/title/search?search=${encodeURIComponent(query)}`;

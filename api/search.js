@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
     let targetUrl = '';
     if (id) {
         // ОФИЦИАЛЬНЫЙ ЭНДПОИНТ ДЛЯ СЕРИЙ В API V1 (НАПРЯМУЮ ЧЕРЕЗ ANIME/:ID/EPISODES)
-        targetUrl = `https://aniliberty.top/api/v1/anime/${id}/episodes`;
+        targetUrl =https://aniliberty.top/api/v1/anime/catalog/releases/${id}`;`
     } else if (query) {
         // ЭНДПОИНТ ДЛЯ ПОИСКА АНИМЕ В API V1
         targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases?search=${encodeURIComponent(query)}`;

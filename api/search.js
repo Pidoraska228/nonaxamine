@@ -15,11 +15,11 @@ module.exports = async (req, res) => {
 
     let targetUrl = '';
     if (id) {
-        // Эндпоинт v3 для деталей релиза на зеркале без Cloudflare
+        // ТОТ САМЫЙ РАБОЧИЙ ПУТЬ ПОЛУЧЕНИЯ ДЕТАЛЕЙ РЕЛИЗА С СЕРИЯМИ
         targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases/${id}`;
     } else if (query) {
-        // Эндпоинт v3 для поиска релизов на зеркале без Cloudflare
-        targetUrl = `https://api-anilibria.ru/v3/title/search?search=${encodeURIComponent(query)}`;
+        // ОФИЦИАЛЬНЫЙ ПУТЬ ПОИСКА РЕЛИЗОВ
+        targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases?search=${encodeURIComponent(query)}`;
     } else {
         return res.status(400).json({ error: 'Параметры q или id отсутствуют' });
     }
@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
     };
 
     try {
-        console.log(`Запрос к официальному зеркалу Анилибрии без Cloudflare: ${targetUrl}`);
+        console.log(`Запрос к API v1: ${targetUrl}`);
         
         https.get(targetUrl, options, (response) => {
             let data = '';
@@ -46,12 +46,12 @@ module.exports = async (req, res) => {
                     const parsedData = JSON.parse(data);
                     return res.status(200).json(parsedData);
                 } catch (parseError) {
-                    return res.status(500).json({ error: 'Ошибка парсинга ответа от зеркала', details: parseError.message });
+                    return res.status(500).json({ error: 'Ошибка парсинга ответа от API v1', details: parseError.message });
                 }
             });
 
         }).on("error", (err) => {
-            return res.status(500).json({ error: 'Ошибка сети при обращении к зеркалу', details: err.message });
+            return res.status(500).json({ error: 'Ошибка сети при обращении к API v1', details: err.message });
         });
     } catch (error) {
         return res.status(500).json({ error: 'Критическая ошибка сервера', details: error.message });

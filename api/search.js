@@ -13,61 +13,73 @@ module.exports = async (req, res) => {
     const query = req.query.q;
     const id = req.query.id;
 
-    let targetUrl = '';
-    if (id) {
-        // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ДЕТАЛЕЙ И СЕРИЙ АНИМЕ В API V1 (БЕЗ RELEASES И CATALOG)
-        targetUrl = `https://aniliberty.top/api/v1/anime/releases/${id}/episodes`;
-    } else if (query) {
-        // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ПОИСКА АНИМЕ В API V1 (БЕЗ CATALOG)
-        targetUrl = `https://aniliberty.top/api/v1/anime/search?q=${encodeURIComponent(query)}`;
-    } else {
-        return res.status(400).json({ error: 'Параметры q или id отсутствуют' });
-    }
-
-    // Используем контейнер AllOrigins на бэкенде Vercel для полного обхода блокировок IP Amazon/Vercel со стороны Cloudflare!
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-
     const options = {
         headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, flee Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'application/json'
         }
     };
 
-    try {
-        console.log(`Запуск двойного обхода через AllOrigins к: ${targetUrl}`);
+    // Настраиваем карусель серверов Анилибрии на случай падения или тех. работ
+    let urlsToTry = [];
+    if (id) {
+        urlsToTry = [
+            `https://aniliberty.top/api/v1/anime/releases/${id}/episodes`,
+            `https://api.anilibria.top/v3/title?id=${id}`,
+            `https://api-anilibria.ru/v3/title?id=${id}`
+        ];
+    } else if (query) {
+        urlsToTry = [
+            `https://aniliberty.top/api/v1/anime/search?q=${encodeURIComponent(query)}`,
+            `https://api.anilibria.top/v3/title/search?search=${encodeURIComponent(query)}`,
+            `https://api-anilibria.ru/v3/title/search?search=${encodeURIComponent(query)}`
+        ];
+    } else {
+        return res.status(400).json({ error: 'Параметры q или id отсутствуют' });
+    }
+
+    let success = false;
+    let lastError = null;
+
+    // Перебираем серверы по очереди
+    for (let i = 0; i < urlsToTry.length; i++) {
+        const targetUrl = urlsToTry[i];
+        console.log(`Сервер пробует зеркало ${i + 1}: ${targetUrl}`);
         
-        https.get(proxyUrl, options, (response) => {
-            let data = '';
-
-            response.on('data', (chunk) => {
-                data += chunk;
-            });
-
-            response.on('end', () => {
-                try {
-                    const wrapper = JSON.parse(data);
-                    if (!wrapper.contents) {
-                        return res.status(500).json({ error: 'Прокси вернул пустой контейнер' });
+        try {
+            const data = await new Promise((resolve, reject) => {
+                https.get(targetUrl, options, (response) => {
+                    if (response.statusCode !== 200) {
+                        reject(new Error(`HTTP Status ${response.statusCode}`));
+                        return;
                     }
-                    
-                    // Распаковываем оригинальный ответ Анилибрии из контейнера AllOrigins
-                    const parsedData = JSON.parse(wrapper.contents);
-                    return res.status(200).json(parsedData);
-                } catch (parseError) {
-                    return res.status(500).json({ 
-                        error: 'Ошибка парсинга ответа от API v1', 
-                        details: parseError.message,
-                        rawData: data.substring(0, 300)
-                    });
-                }
+                    let body = '';
+                    response.on('data', (chunk) => body += chunk);
+                    response.on('end', () => resolve(body));
+                }).on("error", (err) => reject(err));
             });
 
-        }).on("error", (err) => {
-            return res.status(500).json({ error: 'Ошибка сети при обращении к прокси', details: err.message });
+            const parsed = JSON.parse(data);
+            
+            // Если ответ содержит ошибку от Cloudflare (например, 522 или 502)
+            if (parsed.error && parsed.error.code >= 400) {
+                throw new Error(`API Error: ${parsed.error.message}`);
+            }
+
+            // УСПЕХ! Отдаем ответ клиенту
+            res.status(200).json(parsed);
+            success = true;
+            break; // выходим из цикла
+        } catch (err) {
+            console.warn(`Зеркало ${i + 1} (${new URL(targetUrl).hostname}) дало сбой:`, err.message);
+            lastError = err;
+        }
+    }
+
+    if (!success) {
+        res.status(500).json({ 
+            error: 'Все серверы Анилибрии недоступны или перегружены', 
+            details: lastError ? lastError.message : 'Неизвестная ошибка' 
         });
-    } catch (error) {
-        return res.status(500).json({ error: 'Критическая ошибка сервера', details: error.message });
     }
 };
- 

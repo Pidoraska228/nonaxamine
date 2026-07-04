@@ -15,11 +15,11 @@ module.exports = async (req, res) => {
 
     let targetUrl = '';
     if (id) {
-        // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ДЕТАЛЕЙ И СЕРИЙ АНИМЕ В API V1 (БЕЗ RELEASES И CATALOG)
-        targetUrl = `https://aniliberty.top/api/v1/anime/${id}`;
+        // Эндпоинт v3 для деталей релиза на зеркале без Cloudflare
+        targetUrl = `https://api-anilibria.ru/v3/title?id=${id}`;
     } else if (query) {
-        // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ПОИСКА АНИМЕ В API V1 (БЕЗ CATALOG)
-        targetUrl = `https://aniliberty.top/api/v1/anime/search?q=${encodeURIComponent(query)}`;
+        // Эндпоинт v3 для поиска релизов на зеркале без Cloudflare
+        targetUrl = `https://api-anilibria.ru/v3/title/search?search=${encodeURIComponent(query)}`;
     } else {
         return res.status(400).json({ error: 'Параметры q или id отсутствуют' });
     }
@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
     };
 
     try {
-        console.log(`Запрос к каноничному API v1: ${targetUrl}`);
+        console.log(`Запрос к официальному зеркалу Анилибрии без Cloudflare: ${targetUrl}`);
         
         https.get(targetUrl, options, (response) => {
             let data = '';
@@ -46,12 +46,12 @@ module.exports = async (req, res) => {
                     const parsedData = JSON.parse(data);
                     return res.status(200).json(parsedData);
                 } catch (parseError) {
-                    return res.status(500).json({ error: 'Ошибка парсинга ответа от API v1', details: parseError.message });
+                    return res.status(500).json({ error: 'Ошибка парсинга ответа от зеркала', details: parseError.message });
                 }
             });
 
         }).on("error", (err) => {
-            return res.status(500).json({ error: 'Ошибка сети при обращении к API v1', details: err.message });
+            return res.status(500).json({ error: 'Ошибка сети при обращении к зеркалу', details: err.message });
         });
     } catch (error) {
         return res.status(500).json({ error: 'Критическая ошибка сервера', details: error.message });

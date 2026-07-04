@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
     let targetUrl = '';
     if (id) {
         // ТОТ САМЫЙ РАБОЧИЙ ПУТЬ ПОЛУЧЕНИЯ ДЕТАЛЕЙ РЕЛИЗА С СЕРИЯМИ
-        targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases/${id}`;
+        targetUrl = `https://aniliberty.top/api/v1/anime/${id}`;
     } else if (query) {
         // ОФИЦИАЛЬНЫЙ ПУТЬ ПОИСКА РЕЛИЗОВ
         targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases?search=${encodeURIComponent(query)}`;

@@ -580,7 +580,7 @@ const localDatabase = [
     },
     {
         id: "attack-on-titan",
-        name: "Акацуки титанов",
+        name: "Атака титанов",
         description: "Человечество живет за тремя огромными стенами, защищающими их от гигантских плотоядных монстров — титанов. Но мирная жизнь заканчивается в один день.",
         posters: { medium: { url: "https://images.unsplash.com/photo-1541562232579-512a21360020?q=80&w=300" } },
         player: {
@@ -601,7 +601,6 @@ const skipBtn = document.getElementById('nonax-skip-btn');
 const searchInput = document.getElementById('search-input');
 const searchBtn = document.getElementById('search-btn');
 
-// Объявляем через let, чтобы скрипт мог сам создать их в случае отсутствия
 let resultsDropdown = document.getElementById('results-dropdown');
 let resultsGrid = document.getElementById('results-grid');
 
@@ -820,16 +819,14 @@ async function loadAnime(anime) {
         return;
     }
 
-    // Если это реальное аниме из сети — делаем динамический запрос ДЕТАЛЕЙ РЕЛИЗА по ID через Vercel
+    // Если это реальное аниме из сети — делаем динамический запрос серий по ID через Vercel
     try {
-        console.log(`Запрашиваем детали релиза для ID: ${anime.id}`);
+        console.log(`Запрашиваем серии для ID: ${anime.id}`);
         const response = await fetch(`${VERCEL_SERVER_URL}/api/search?id=${anime.id}`);
         if (!response.ok) throw new Error();
         
-        const releaseData = await response.json();
-        
-        // В новом API v1 детали релиза возвращаются как объект. Эпизоды лежат в поле episodes или data.episodes
-        const episodesList = releaseData.episodes || (releaseData.data && releaseData.data.episodes) || [];
+        const episodesData = await response.json();
+        const episodesList = episodesData.data || episodesData || [];
         renderEpisodes(episodesList);
     } catch (err) {
         console.error("Не удалось загрузить серии через Vercel:", err);
@@ -852,7 +849,8 @@ function renderEpisodes(episodesList) {
             episodesList.forEach(ep => {
                 formattedList[ep.ordinal] = {
                     name: ep.name || `Серия ${ep.ordinal}`,
-                    hls: ep.hls || ep.video || ep.sources || {}, // Ищем hls, video или sources
+                    // Изменено: теперь hls принимает абсолютно любой вложенный объект
+                    hls: ep.hls || ep.video || ep.sources || ep, 
                     skips: ep.skips || {}
                 };
             });
@@ -887,7 +885,12 @@ function renderEpisodes(episodesList) {
 function findHlsPath(obj) {
     if (!obj || typeof obj !== 'object') return null;
     
-    // Если нашли HLS-объект с ключами качества видео
+    // Новые ключи разрешения видеопотока в API v1
+    if (obj.hls_1080 || obj.hls_720 || obj.hls_480) {
+        return obj.hls_1080 || obj.hls_720 || obj.hls_480;
+    }
+    
+    // Старые ключи разрешения
     if (obj.fhd || obj.hd || obj.sd) {
         return obj.fhd || obj.hd || obj.sd;
     }
@@ -921,7 +924,7 @@ function loadEpisode(episodeKey, episodesList) {
         subTitleEl.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
     }
 
-    // Запускаем рекурсивный автопоиск HLS-потока внутри объекта серии
+    // Запускаем рекурсивный автопоиск HLS-потока внутри объекта серии (теперь он найдет hls_1080!)
     let hlsPath = findHlsPath(episode);
 
     if (!hlsPath) {

@@ -580,7 +580,7 @@ const localDatabase = [
     },
     {
         id: "attack-on-titan",
-        name: "Атака титанов",
+        name: "Акацуки титанов",
         description: "Человечество живет за тремя огромными стенами, защищающими их от гигантских плотоядных монстров — титанов. Но мирная жизнь заканчивается в один день.",
         posters: { medium: { url: "https://images.unsplash.com/photo-1541562232579-512a21360020?q=80&w=300" } },
         player: {
@@ -826,7 +826,9 @@ async function loadAnime(anime) {
         if (!response.ok) throw new Error();
         
         const episodesData = await response.json();
-        const episodesList = episodesData.data || episodesData || [];
+        
+        // ВАЖНЕЙШЕЕ ИСПРАВЛЕНИЕ: В новом API v1 серии лежат в поле episodes внутри объекта релиза!
+        const episodesList = episodesData.episodes || (episodesData.data && episodesData.data.episodes) || episodesData || [];
         renderEpisodes(episodesList);
     } catch (err) {
         console.error("Не удалось загрузить серии через Vercel:", err);
@@ -849,8 +851,7 @@ function renderEpisodes(episodesList) {
             episodesList.forEach(ep => {
                 formattedList[ep.ordinal] = {
                     name: ep.name || `Серия ${ep.ordinal}`,
-                    // Изменено: теперь hls принимает абсолютно любой вложенный объект
-                    hls: ep.hls || ep.video || ep.sources || ep, 
+                    hls: ep || {}, // Передаем весь объект серии, пусть рекурсивный поиск сам все найдет!
                     skips: ep.skips || {}
                 };
             });
@@ -883,9 +884,16 @@ function renderEpisodes(episodesList) {
 
 // Глубокий рекурсивный поиск видеопотока внутри объекта серии (решает любые изменения структуры API!)
 function findHlsPath(obj) {
-    if (!obj || typeof obj !== 'object') return null;
+    if (!obj) return null;
     
-    // Новые ключи разрешения видеопотока в API v1
+    // Если нашли прямую ссылку-строку на поток
+    if (typeof obj === 'string' && (obj.includes('.m3u8') || obj.includes('.mp4'))) {
+        return obj;
+    }
+    
+    if (typeof obj !== 'object') return null;
+    
+    // Новые ключи разрешения видеопотока в API v1 (hls_1080 и т.д.)
     if (obj.hls_1080 || obj.hls_720 || obj.hls_480) {
         return obj.hls_1080 || obj.hls_720 || obj.hls_480;
     }
@@ -924,7 +932,7 @@ function loadEpisode(episodeKey, episodesList) {
         subTitleEl.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
     }
 
-    // Запускаем рекурсивный автопоиск HLS-потока внутри объекта серии (теперь он найдет hls_1080!)
+    // Запускаем рекурсивный автопоиск HLS-потока внутри объекта серии (теперь он идеально найдет hls_1080!)
     let hlsPath = findHlsPath(episode);
 
     if (!hlsPath) {

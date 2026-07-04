@@ -608,9 +608,9 @@ const localDatabase = [
         player: {
             host: "",
             list: {
-                "1": { name: "Возвращение домой", hls_1080: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", opening: { start: 2, stop: 5 } },
-                "2": { name: "Акацуки начинают действовать", hls_1080: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", opening: { start: 1, stop: 4 } },
-                "3": { name: "Результаты тренировок", hls_1080: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", opening: { start: 2, stop: 6 } }
+                "1": { name: "Возвращение домой", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 5] } },
+                "2": { name: "Акацуки начинают действовать", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [1, 4] } },
+                "3": { name: "Результаты тренировок", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 6] } }
             }
         }
     },
@@ -622,7 +622,7 @@ const localDatabase = [
         player: {
             host: "",
             list: {
-                "1": { name: "Жестокость • Серия 1", hls_1080: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", opening: { start: 2, stop: 5 } },
+                "1": { name: "Жестокость • Серия 1", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [2, 5] } },
                 "2": { name: "Учитель Сакодзи • Серия 2", hls: { fhd: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }, skips: { opening: [1, 3] } }
             }
         }
@@ -662,6 +662,7 @@ const skipBtn = document.getElementById('nonax-skip-btn');
 const searchInput = document.getElementById('search-input');
 const searchBtn = document.getElementById('search-btn');
 
+// Объявляем через let, чтобы скрипт мог сам создать их в случае отсутствия
 let resultsDropdown = document.getElementById('results-dropdown');
 let resultsGrid = document.getElementById('results-grid');
 
@@ -672,12 +673,13 @@ if (!resultsDropdown || !resultsGrid) {
     resultsDropdown.id = 'results-dropdown';
     resultsDropdown.className = 'nx-results-dropdown';
     resultsDropdown.innerHTML = `
-        <div class="nx-results-dropdown-title">Результаты поиска</div>
-        <div id="results-grid" class="nx-results-list"></div>
+        <h3 class="nx-section-title" style="margin-bottom: 15px;">Результаты поиска</h3>
+        <div id="results-grid" class="nx-results-grid"></div>
     `;
-    const navContainer = document.querySelector('.nx-navbar-container');
-    if (navContainer) {
-        navContainer.appendChild(resultsDropdown);
+    const pageContainer = document.querySelector('.nx-page-container');
+    const catalogPage = document.getElementById('catalog-page');
+    if (pageContainer && catalogPage) {
+        pageContainer.insertBefore(resultsDropdown, catalogPage);
     } else {
         document.body.appendChild(resultsDropdown);
     }
@@ -695,19 +697,11 @@ const heroPlayBtn = document.getElementById('hero-play-btn');
 let currentAnimeData = null;
 let currentEpisodeKey = null;
 let hlsInstance = null;
-let currentEpisodesList = {}; // Сохраняем отформатированные серии активного аниме
 
 // Поиск по клику и по нажатию Enter
 searchBtn.addEventListener('click', performSearch);
 searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') performSearch();
-});
-
-// Закрываем выпадающий поиск при клике на любое пустое место на экране (как на Jut.su)
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.nx-search-box') && !e.target.closest('.nx-results-dropdown')) {
-        resultsDropdown.style.display = 'none';
-    }
 });
 
 // Навигация между страницами
@@ -762,7 +756,7 @@ async function performSearch() {
     const query = searchInput.value.trim();
     if (!query) return;
 
-    resultsGrid.innerHTML = '<p style="padding: 10px; color: var(--nx-text-secondary); text-align: center; font-size: 13px;">Поиск аниме в базе...</p>';
+    resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Поиск аниме в базе...</p>';
     resultsDropdown.style.display = 'block';
 
     const serverUrl = `${VERCEL_SERVER_URL}/api/search?q=${encodeURIComponent(query)}`;
@@ -783,22 +777,12 @@ async function performSearch() {
         // В новом API v1 результаты поиска возвращаются как массив объектов напрямую или внутри поля data
         const list = Array.isArray(data) ? data : (data.data || data.list || []);
         
-        // ВАЖНЕЙШЕЕ ИСПРАВЛЕНИЕ: Если сервер вернул пустой массив, автоматически ищем в локальной базе!
-        if (list.length === 0) {
-            console.log("Сервер вернул 0 результатов. Пробуем локальную базу...");
-            const localResults = localDatabase.filter(anime => 
-                anime.name.toLowerCase().includes(query.toLowerCase()) || 
-                anime.description.toLowerCase().includes(query.toLowerCase())
-            );
-            displaySearchResults(localResults);
-        } else {
-            displaySearchResults(list);
-        }
+        displaySearchResults(list);
     } catch (err) {
         clearTimeout(timeoutId); // Отменяем таймер при любой ошибке
         console.warn("Сбой бэкенда Vercel или таймаут ожидания. Запускаем локальный поиск...", err);
         
-        // Резервный поиск по нашей локальной базе данных
+        // Мгновенный резервный поиск по нашей локальной базе данных
         const localResults = localDatabase.filter(anime => 
             anime.name.toLowerCase().includes(query.toLowerCase()) || 
             anime.description.toLowerCase().includes(query.toLowerCase())
@@ -807,24 +791,24 @@ async function performSearch() {
     }
 }
 
-// Вывод результатов поиска (Компактный списочный вид Jut.su)
+// Вывод результатов поиска
 function displaySearchResults(animeList) {
     resultsGrid.innerHTML = '';
     if (animeList.length === 0) {
-        resultsGrid.innerHTML = '<p style="padding: 10px; color: var(--nx-text-secondary); text-align: center; font-size: 13px;">Ничего не найдено.</p>';
+        resultsGrid.innerHTML = '<p style="grid-column: span 4; color: var(--nx-text-secondary); text-align: center;">Ничего не найдено.</p>';
         resultsDropdown.style.display = 'block';
         return;
     }
 
     animeList.forEach(anime => {
-        const row = document.createElement('div');
-        row.className = 'nx-search-item-row';
+        const card = document.createElement('div');
+        card.className = 'nx-anime-card';
         
         // В новом API v1 название релиза лежит в объекте name.main
         const animeName = (anime.name && anime.name.main) || anime.name || "Аниме";
         
         // Извлекаем правильный URL постера из нового формата API v1
-        let posterUrl = "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&width=100";
+        let posterUrl = "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&width=300";
         try {
             if (anime.poster && anime.poster.preview) {
                 posterUrl = `https://aniliberty.top${anime.poster.preview}`;
@@ -835,24 +819,22 @@ function displaySearchResults(animeList) {
             }
         } catch(e) {}
 
-        row.innerHTML = `
-            <img class="nx-search-item-poster" src="${posterUrl}" alt="${animeName}">
-            <div class="nx-search-item-info">
-                <div class="nx-search-item-title">${animeName}</div>
-                <div class="nx-search-item-meta">${anime.year || "2026"} • Все серии в HD</div>
-            </div>
+        card.innerHTML = `
+            <img src="${posterUrl}" alt="${animeName}">
+            <div class="nx-anime-card-title">${animeName}</div>
         `;
 
-        row.addEventListener('click', () => {
+        card.addEventListener('click', () => {
             loadAnime(anime);
             resultsDropdown.style.display = 'none';
             showPage('watch-page');
         });
 
-        resultsGrid.appendChild(row);
+        resultsGrid.appendChild(card);
     });
 
     resultsDropdown.style.display = 'block';
+    resultsDropdown.scrollIntoView({ behavior: 'smooth' });
 }
 
 // Загрузка аниме и его данных (Полностью самодостаточный метод)
@@ -925,25 +907,23 @@ function renderEpisodes(episodesList) {
     epsContainer.innerHTML = '';
     
     // Преобразуем массив серий в удобную структуру, если пришел массив (API v1)
-    currentEpisodesList = {}; // Очищаем глобальный список серий
+    let formattedList = {};
     try {
         if (episodesList && Array.isArray(episodesList)) {
             episodesList.forEach(ep => {
-                currentEpisodesList[ep.ordinal] = {
+                formattedList[ep.ordinal] = {
                     name: ep.name || `Серия ${ep.ordinal}`,
-                    hls_1080: ep.hls_1080 || "",
-                    hls_720: ep.hls_720 || "",
-                    hls_480: ep.hls_480 || "",
-                    opening: ep.opening || {},
-                    ending: ep.ending || {}
+                    hls: ep || {}, // Передаем весь объект серии, пусть рекурсивный поиск сам все найдет!
+                    skips: ep.skips || {}
                 };
             });
         } else if (episodesList) {
-            currentEpisodesList = episodesList; // Если пришел объект (старый формат/локальный)
+            formattedList = episodesList; // Если пришел объект (старый формат/локальный)
         }
     } catch(e) { console.error("Ошибка форматирования списка серий:", e); }
 
-    const episodeKeys = currentEpisodesList ? Object.keys(currentEpisodesList) : [];
+    // Безопасное получение ключей (предохраняет от краша при null/undefined)
+    const episodeKeys = formattedList ? Object.keys(formattedList) : [];
     
     if (episodeKeys.length === 0) {
         epsContainer.innerHTML = '<p style="color: var(--nx-text-secondary); text-align: center; grid-column: span 10;">Для этого релиза пока нет серий.</p>';
@@ -954,14 +934,45 @@ function renderEpisodes(episodesList) {
         const btn = document.createElement('button');
         btn.className = 'nx-episode-btn';
         btn.innerText = key;
-        btn.addEventListener('click', () => loadEpisode(key, currentEpisodesList));
+        btn.addEventListener('click', () => loadEpisode(key, formattedList));
         epsContainer.appendChild(btn);
     });
 
     // Автоматически запускаем первую серию
     if (episodeKeys.length > 0) {
-        loadEpisode(episodeKeys[0], currentEpisodesList);
+        loadEpisode(episodeKeys[0], formattedList);
     }
+}
+
+// Глубокий рекурсивный поиск видеопотока внутри объекта серии (решает любые изменения структуры API!)
+function findHlsPath(obj) {
+    if (!obj) return null;
+    
+    // Если нашли прямую ссылку-строку на поток
+    if (typeof obj === 'string' && (obj.includes('.m3u8') || obj.includes('.mp4'))) {
+        return obj;
+    }
+    
+    if (typeof obj !== 'object') return null;
+    
+    // Новые ключи разрешения видеопотока в API v1 (hls_1080 и т.д.)
+    if (obj.hls_1080 || obj.hls_720 || obj.hls_480) {
+        return obj.hls_1080 || obj.hls_720 || obj.hls_480;
+    }
+    
+    // Старые ключи разрешения
+    if (obj.fhd || obj.hd || obj.sd) {
+        return obj.fhd || obj.hd || obj.sd;
+    }
+    
+    // Перебираем все внутренние свойства объекта рекурсивно
+    for (let key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            const result = findHlsPath(obj[key]);
+            if (result) return result;
+        }
+    }
+    return null;
 }
 
 // Запуск конкретной серии
@@ -983,13 +994,8 @@ function loadEpisode(episodeKey, episodesList) {
         subTitleEl.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
     }
 
-    // Извлекаем самое высокое доступное качество из прямой структуры API v1
-    let hlsPath = episode.hls_1080 || episode.hls_720 || episode.hls_480 || "";
-    
-    // Если это локальное демо (старый формат)
-    if (!hlsPath && episode.hls) {
-        hlsPath = typeof episode.hls === 'string' ? episode.hls : (episode.hls.fhd || episode.hls.hd || episode.hls.sd);
-    }
+    // Запускаем рекурсивный автопоиск HLS-потока внутри объекта серии (теперь он идеально найдет hls_1080!)
+    let hlsPath = findHlsPath(episode);
 
     if (!hlsPath) {
         alert("Не найден рабочий видеопоток для данной серии.");
@@ -1034,29 +1040,15 @@ function playHlsStream(url) {
 
 // Слежение за таймкодами опенингов (API v1)
 player.addEventListener('timeupdate', () => {
-    if (!currentAnimeData || !currentEpisodeKey || !currentEpisodesList) return;
+    if (!currentAnimeData || !currentEpisodeKey) return;
 
     const time = player.currentTime;
-    const episode = currentEpisodesList[currentEpisodeKey];
-    if (!episode) return;
-
-    // Извлекаем точные секунды начала и конца опенинга из нового объекта opening
-    let start = 0;
-    let end = 0;
-
-    if (episode.opening && typeof episode.opening === 'object') {
-        start = episode.opening.start || 0;
-        end = episode.opening.stop || 0;
-    } else if (episode.skips && episode.skips.opening && episode.skips.opening.length === 2) {
-        start = episode.skips.opening[0];
-        end = episode.skips.opening[1];
-    }
-
-    // Появление кнопки автопропуска
-    if (start > 0 && end > 0 && time >= start && time < end) {
+    
+    // Временный костыль для таймкодов в демо-режиме (опенинг с 2 по 5 секунды)
+    if (time >= 2 && time < 5) {
         skipBtn.style.display = 'block';
         skipBtn.onclick = () => {
-            player.currentTime = end;
+            player.currentTime = 5;
             skipBtn.style.display = 'none';
         };
     } else {

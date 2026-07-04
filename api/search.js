@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
         targetUrl = `https://aniliberty.top/api/v1/anime/${id}`;
     } else if (query) {
         // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ПОИСКА АНИМЕ В API V1 (БЕЗ CATALOG)
-        targetUrl = `https://aniliberty.top/api/v1/anime/search?q=${encodeURIComponent(query)}`;
+        targetUrl =`https://aniliberty.top/api/v1/anime/releases/${id}/episodes`;
     } else {
         return res.status(400).json({ error: 'Параметры q или id отсутствуют' });
     }

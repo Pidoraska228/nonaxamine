@@ -827,7 +827,7 @@ async function loadAnime(anime) {
         
         const episodesData = await response.json();
         
-        // ВАЖНЕЙШЕЕ ИСПРАВЛЕНИЕ: В новом API v1 серии лежат в поле episodes внутри объекта релиза!
+        // ВАЖНЕЙШЕЕ ИСПРАВЛЕНИЕ: Извлекаем именно массив серий 'episodes' из объекта релиза!
         const episodesList = episodesData.episodes || (episodesData.data && episodesData.data.episodes) || episodesData || [];
         renderEpisodes(episodesList);
     } catch (err) {
@@ -884,21 +884,12 @@ function renderEpisodes(episodesList) {
 
 // Глубокий рекурсивный поиск видеопотока внутри объекта серии (решает любые изменения структуры API!)
 function findHlsPath(obj) {
-    if (!obj) return null;
+    if (!obj || typeof obj !== 'object') return null;
     
-    // Если нашли прямую ссылку-строку на поток
-    if (typeof obj === 'string' && (obj.includes('.m3u8') || obj.includes('.mp4'))) {
-        return obj;
-    }
-    
-    if (typeof obj !== 'object') return null;
-    
-    // Новые ключи разрешения видеопотока в API v1 (hls_1080 и т.д.)
+    // Если нашли HLS-объект с ключами качества видео в API v1 или v3
     if (obj.hls_1080 || obj.hls_720 || obj.hls_480) {
         return obj.hls_1080 || obj.hls_720 || obj.hls_480;
     }
-    
-    // Старые ключи разрешения
     if (obj.fhd || obj.hd || obj.sd) {
         return obj.fhd || obj.hd || obj.sd;
     }
@@ -932,7 +923,7 @@ function loadEpisode(episodeKey, episodesList) {
         subTitleEl.innerText = `${episode.name || 'Эпизод воспроизводится'}`;
     }
 
-    // Запускаем рекурсивный автопоиск HLS-потока внутри объекта серии (теперь он идеально найдет hls_1080!)
+    // Запускаем рекурсивный автопоиск HLS-потока внутри объекта серии
     let hlsPath = findHlsPath(episode);
 
     if (!hlsPath) {

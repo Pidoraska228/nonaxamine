@@ -15,7 +15,7 @@ module.exports = async (req, res) => {
     let targetUrl = '';
     if (id) {
         // КОРРЕКТНОЕ ЗЕРКАЛО С ДВОЙНОЙ ПРИСТАВКОЙ (ЭТО НЕ ОПЕЧАТКА!)
-        targetUrl = `https://api-anilibria.ru/v3/title?id=${id}`;
+        targetUrl = `https://aniliberty.top/api/v1/anime/releases/${id}/episodes`;
     } else if (query) {
         // КОРРЕКТНОЕ ЗЕРКАЛО С ДВОЙНОЙ ПРИСТАВКОЙ (ЭТО НЕ ОПЕЧАТКА!)
         targetUrl = `https://api.api-anilibria.ru/v3/title/search?search=${encodeURIComponent(query)}`;

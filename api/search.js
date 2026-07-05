@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
     let targetUrl = '';
     if (id) {
         // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ПОЛУЧЕНИЯ СЕРИЙ (БЕЗ CATALOG)
-        targetUrl = `https://aniliberty.top/api/v1/anime/releases/${id}/episodes`;
+        targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases/${id}`;
     } else if (query) {
         // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ПОИСКА АНИМЕ (С CATALOG)
         targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases?search=${encodeURIComponent(query)}`;

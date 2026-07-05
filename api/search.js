@@ -1,6 +1,7 @@
 const https = require('https');
 
 module.exports = async (req, res) => {
+    // CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,14 +15,17 @@ module.exports = async (req, res) => {
 
     let targetUrl = '';
     if (id) {
-        // КОРРЕКТНОЕ ЗЕРКАЛО С ДВОЙНОЙ ПРИСТАВКОЙ (ЭТО НЕ ОПЕЧАТКА!)
+        // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ДЕТАЛЕЙ И СЕРИЙ АНИМЕ В API V1 (БЕЗ RELEASES И CATALOG)
         targetUrl = `https://aniliberty.top/api/v1/anime/releases/${id}/episodes`;
     } else if (query) {
-        // КОРРЕКТНОЕ ЗЕРКАЛО С ДВОЙНОЙ ПРИСТАВКОЙ (ЭТО НЕ ОПЕЧАТКА!)
-        targetUrl = `https://api.api-anilibria.ru/v3/title/search?search=${encodeURIComponent(query)}`;
+        // ОФИЦИАЛЬНЫЙ КАНOНИЧНЫЙ ПУТЬ ПОИСКА АНИМЕ В API V1 (БЕЗ CATALOG)
+        targetUrl = `https://aniliberty.top/api/v1/anime/catalog/releases?search=${encodeURIComponent(query)}`;
     } else {
         return res.status(400).json({ error: 'Параметры q или id отсутствуют' });
     }
+
+    // Используем контейнер AllOrigins на бэкенде Vercel для полного обхода блокировок IP Amazon/Vercel со стороны Cloudflare!
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
     const options = {
         headers: {
@@ -31,9 +35,9 @@ module.exports = async (req, res) => {
     };
 
     try {
-        console.log(`Запрос к официальному зеркалу Анилибрии без Cloudflare: ${targetUrl}`);
+        console.log(`Запуск двойного обхода через AllOrigins к: ${targetUrl}`);
         
-        https.get(targetUrl, options, (response) => {
+        https.get(proxyUrl, options, (response) => {
             let data = '';
 
             response.on('data', (chunk) => {
@@ -42,15 +46,25 @@ module.exports = async (req, res) => {
 
             response.on('end', () => {
                 try {
-                    const parsedData = JSON.parse(data);
+                    const wrapper = JSON.parse(data);
+                    if (!wrapper.contents) {
+                        return res.status(500).json({ error: 'Прокси вернул пустой контейнер' });
+                    }
+                    
+                    // Распаковываем оригинальный ответ Анилибрии из контейнера AllOrigins
+                    const parsedData = JSON.parse(wrapper.contents);
                     return res.status(200).json(parsedData);
                 } catch (parseError) {
-                    return res.status(500).json({ error: 'Ошибка парсинга ответа от зеркала', details: parseError.message });
+                    return res.status(500).json({ 
+                        error: 'Ошибка парсинга ответа от API v1', 
+                        details: parseError.message,
+                        rawData: data.substring(0, 300)
+                    });
                 }
             });
 
         }).on("error", (err) => {
-            return res.status(500).json({ error: 'Ошибка сети при обращении к зеркалу', details: err.message });
+            return res.status(500).json({ error: 'Ошибка сети при обращении к прокси', details: err.message });
         });
     } catch (error) {
         return res.status(500).json({ error: 'Критическая ошибка сервера', details: error.message });
